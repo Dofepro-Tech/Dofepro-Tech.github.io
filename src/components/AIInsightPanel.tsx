@@ -4,9 +4,10 @@ import { cn } from '@/src/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bird, BookOpen, Heart, MessageCircle, Send, Loader2, Share2, Check, Sparkles, Copy, Cpu } from 'lucide-react';
 import { PanelNavButtons } from '@/src/components/PanelNavButtons';
-import { chatAboutVerse, explainVerse, getAiRuntimeConfig, getStoredAiModelOverride, setStoredAiModelOverride } from '@/src/services/aiService';
+import { canUseAiFeatures, chatAboutVerse, explainVerse, getAiRuntimeConfig, getAiUnavailableMessage, getStoredAiModelOverride, setStoredAiModelOverride } from '@/src/services/aiService';
 import Markdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
+import { normalizeAppLanguage } from '@/src/lib/language';
 
 interface AIInsightPanelProps {
   verse: Verse | null;
@@ -17,7 +18,9 @@ interface AIInsightPanelProps {
 
 export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightPanelProps) {
   const { t, i18n } = useTranslation();
-  const currentLanguage = i18n.resolvedLanguage || i18n.language;
+  const currentLanguage = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
+  const aiAvailable = canUseAiFeatures();
+  const aiUnavailableMessage = getAiUnavailableMessage(currentLanguage);
   const [activeTab, setActiveTab] = useState<'insights' | 'chat'>('insights');
   const [isCopied, setIsCopied] = useState(false);
   const [insightType, setInsightType] = useState<'explica' | 'contexto' | 'aplicacion' | null>(null);
@@ -48,11 +51,11 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
   }, [chatHistory, activeTab]);
 
   useEffect(() => {
-    if (!showModelSelector) {
+    if (!showModelSelector || !aiAvailable) {
       return;
     }
 
-    getAiRuntimeConfig()
+    getAiRuntimeConfig(currentLanguage)
       .then((config) => {
         setRuntimeConfig(config);
         setSelectedAiModel(getStoredAiModelOverride());
@@ -60,11 +63,17 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
       .catch((error) => {
         console.error('Could not load AI runtime config:', error);
       });
-  }, [showModelSelector]);
+  }, [aiAvailable, currentLanguage, showModelSelector]);
 
   if (!verse || !chapter) return null;
 
   const handleInsight = async (type: 'explica' | 'contexto' | 'aplicacion') => {
+    if (!aiAvailable) {
+      setInsightType(type);
+      setContent(aiUnavailableMessage);
+      return;
+    }
+
     setInsightType(type);
     setLoading(true);
     setContent('');
@@ -81,6 +90,12 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
 
   const handleChat = async () => {
     if (!chatInput.trim() || loading) return;
+
+    if (!aiAvailable) {
+      setChatHistory((prev) => [...prev, { role: 'model', content: aiUnavailableMessage }]);
+      setChatInput('');
+      return;
+    }
     
     const userMsg = chatInput.trim();
     setChatInput('');
@@ -218,7 +233,7 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
         </p>
       </div>
 
-      {showModelSelector && runtimeConfig?.overrideAllowed && (
+      {showModelSelector && aiAvailable && runtimeConfig?.overrideAllowed && (
         <div className="px-4 py-4 border-b border-olive/10 bg-paper-light/60">
           <div className="rounded-2xl border border-blue-600/10 bg-blue-600/5 p-4">
             <div className="flex items-start gap-3">
@@ -301,11 +316,17 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
               className="p-6 pb-24"
             >
               <div className="flex flex-col gap-3 mb-8">
+                {!aiAvailable && (
+                  <div className="rounded-2xl border border-amber-300/50 bg-amber-50 px-4 py-3 font-sans text-sm leading-relaxed text-amber-900">
+                    {aiUnavailableMessage}
+                  </div>
+                )}
                 <InsightButton 
                   icon={<Bird className="w-4 h-4" />} 
                   title={t('ai.explain_title')} 
                   desc={t('ai.explain_desc')}
                   active={insightType === 'explica'}
+                  disabled={!aiAvailable}
                   onClick={() => handleInsight('explica')}
                 />
                 <InsightButton 
@@ -313,6 +334,7 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
                   title={t('ai.context_title')} 
                   desc={t('ai.context_desc')}
                   active={insightType === 'contexto'}
+                  disabled={!aiAvailable}
                   onClick={() => handleInsight('contexto')}
                 />
                 <InsightButton 
@@ -320,6 +342,7 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
                   title={t('ai.application_title')} 
                   desc={t('ai.application_desc')}
                   active={insightType === 'aplicacion'}
+                  disabled={!aiAvailable}
                   onClick={() => handleInsight('aplicacion')}
                 />
               </div>
@@ -390,11 +413,12 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={t('ai.chat_placeholder')}
+                    disabled={!aiAvailable}
                     className="w-full bg-paper border border-olive/20 rounded-full py-3 pl-5 pr-12 text-sm focus:outline-none focus:border-olive transition-colors font-sans text-ink"
                   />
                   <button 
                     onClick={handleChat}
-                    disabled={!chatInput.trim() || loading}
+                    disabled={!aiAvailable || !chatInput.trim() || loading}
                     className="absolute right-2 p-2 bg-olive text-paper rounded-full disabled:opacity-50 transition-opacity"
                   >
                     <Send className="w-4 h-4 ml-0.5" />
@@ -410,12 +434,14 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
   );
 }
 
-function InsightButton({ icon, title, desc, active, onClick }: { icon: React.ReactNode, title: string, desc: string, active: boolean, onClick: () => void }) {
+function InsightButton({ icon, title, desc, active, disabled, onClick }: { icon: React.ReactNode, title: string, desc: string, active: boolean, disabled?: boolean, onClick: () => void }) {
   return (
     <button 
+      type="button"
+      disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex flex-col text-left p-4 rounded-2xl transition-all border",
+        "flex flex-col text-left p-4 rounded-2xl transition-all border disabled:cursor-not-allowed disabled:opacity-60",
         active 
           ? "bg-paper-light border-gold shadow-md ring-1 ring-gold" 
           : "bg-paper-light/50 border-olive/10 hover:bg-paper-light hover:border-olive/30 shadow-sm"

@@ -16,6 +16,32 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
+export function canUseAiFeatures() {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (configuredBaseUrl) {
+    return true;
+  }
+
+  if (!import.meta.env.DEV || typeof window === 'undefined') {
+    return false;
+  }
+
+  const hostname = window.location.hostname.trim().toLowerCase();
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+export function getAiUnavailableMessage(language: 'es' | 'en') {
+  return language === 'en'
+    ? 'AI features need a configured API service. They are unavailable in the static web build until the backend is published.'
+    : 'Las funciones de IA necesitan una API configurada. No están disponibles en la web estática hasta publicar el backend.';
+}
+
+function ensureAiFeaturesAvailable(language: 'es' | 'en') {
+  if (!canUseAiFeatures()) {
+    throw new Error(getAiUnavailableMessage(language));
+  }
+}
+
 function getStoredModelOverride() {
   if (typeof window === 'undefined') {
     return '';
@@ -41,7 +67,9 @@ export function getStoredAiModelOverride() {
   return getStoredModelOverride();
 }
 
-async function postAI<T>(path: string, payload: unknown): Promise<T> {
+async function postAI<T>(path: string, payload: unknown, language: 'es' | 'en'): Promise<T> {
+  ensureAiFeaturesAvailable(language);
+
   const response = await fetch(`${API_BASE_URL}/${path}`, {
     method: 'POST',
     headers: {
@@ -79,7 +107,7 @@ export async function explainVerse(
     text,
     type,
     lang: normalizedLanguage,
-  });
+  }, normalizedLanguage);
 
   return data.text || (normalizedLanguage === 'en' ? 'Could not generate a response.' : 'No se pudo generar una respuesta.');
 }
@@ -100,7 +128,7 @@ export async function chatAboutVerse(
     history,
     message,
     lang: normalizedLanguage,
-  });
+  }, normalizedLanguage);
 
   return data.text || (normalizedLanguage === 'en' ? 'No response.' : 'Sin respuesta.');
 }
@@ -111,17 +139,20 @@ export async function generateStudyStep(
   previousSteps: StudyStep[],
   lang: string = 'es',
 ): Promise<StudyStep> {
+  const normalizedLanguage = normalizeAppLanguage(lang);
   const data = await postAI<{ step: StudyStep }>('study-step', {
     type,
     target,
     previousSteps,
-    lang: normalizeAppLanguage(lang),
-  });
+    lang: normalizedLanguage,
+  }, normalizedLanguage);
 
   return data.step;
 }
 
-export async function getAiRuntimeConfig(): Promise<AiRuntimeConfig> {
+export async function getAiRuntimeConfig(lang: string = 'es'): Promise<AiRuntimeConfig> {
+  ensureAiFeaturesAvailable(normalizeAppLanguage(lang));
+
   const response = await fetch(`${API_BASE_URL}/runtime`);
 
   if (!response.ok) {

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Book, StudySession, StudyStep } from '@/src/types';
-import { generateStudyStep } from '@/src/services/aiService';
+import { canUseAiFeatures, generateStudyStep, getAiUnavailableMessage } from '@/src/services/aiService';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, GraduationCap, ChevronRight, ChevronLeft, Loader2, PlayCircle, Library, ArrowRight, Volume2, VolumeX } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/src/lib/utils';
 import { PanelNavButtons } from '@/src/components/PanelNavButtons';
 import { useTranslation } from 'react-i18next';
-import { getSpeechLanguage } from '@/src/lib/language';
+import { getSpeechLanguage, normalizeAppLanguage } from '@/src/lib/language';
 import { canUseSpeechSynthesis, cancelSpeech, speakText } from '@/src/lib/speech';
 
 interface GuidedStudyProps {
@@ -20,7 +20,9 @@ interface GuidedStudyProps {
 
 export function GuidedStudy({ books, onClose, onNavigate, onGoHome, voiceURI }: GuidedStudyProps) {
   const { t, i18n } = useTranslation();
-  const currentLanguage = i18n.resolvedLanguage || i18n.language;
+  const currentLanguage = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
+  const aiAvailable = canUseAiFeatures();
+  const aiUnavailableMessage = getAiUnavailableMessage(currentLanguage);
   const [step, setStep] = useState<'setup' | 'studying'>('setup');
   const [studyType, setStudyType] = useState<'book' | 'theme'>('book');
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -70,6 +72,11 @@ export function GuidedStudy({ books, onClose, onNavigate, onGoHome, voiceURI }: 
   };
 
   const startStudy = async () => {
+    if (!aiAvailable) {
+      setErrorMessage(aiUnavailableMessage);
+      return;
+    }
+
     if (studyType === 'book' && !selectedBook) return;
     if (studyType === 'theme' && !theme.trim()) return;
 
@@ -176,6 +183,12 @@ export function GuidedStudy({ books, onClose, onNavigate, onGoHome, voiceURI }: 
                   <p className="font-sans text-sm text-ink-light italic">{t('study.setup_desc')}</p>
                 </div>
 
+                {!aiAvailable && (
+                  <div className="rounded-3xl border border-amber-300/50 bg-amber-50 px-5 py-4 font-sans text-sm leading-relaxed text-amber-900">
+                    {aiUnavailableMessage}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button 
                     onClick={() => {
@@ -262,7 +275,7 @@ export function GuidedStudy({ books, onClose, onNavigate, onGoHome, voiceURI }: 
 
                 <button 
                   onClick={startStudy}
-                  disabled={isGenerating || (studyType === 'book' && !selectedBook) || (studyType === 'theme' && !theme.trim())}
+                  disabled={!aiAvailable || isGenerating || (studyType === 'book' && !selectedBook) || (studyType === 'theme' && !theme.trim())}
                   className="w-full py-5 bg-gold text-white rounded-3xl font-sans font-bold uppercase tracking-widest shadow-xl hover:bg-gold/90 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <PlayCircle className="w-5 h-5" />}

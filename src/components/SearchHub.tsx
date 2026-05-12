@@ -106,9 +106,8 @@ export function SearchHub({ onGoBack, onGoHome, onOpenReader, onOpenPlans, onOpe
         })
         .catch((error) => {
           if (!cancelled) {
-            console.error('SearchHub search failed:', error);
             setResults([]);
-            setErrorMessage(copy.noResults);
+            setErrorMessage(error instanceof Error ? error.message : copy.noResults);
           }
         })
         .finally(() => {
