@@ -1,5 +1,6 @@
 import type { BibleSearchResponse, Book, ChapterData } from '@/src/types';
 import { canUseConfiguredApi, resolveConfiguredApiUrl } from '@/src/lib/apiConfig';
+import { markBackendReady, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
 import { FALLBACK_BIBLE_BOOKS } from '@/src/lib/fallbackBooks';
 import { getBibleVersion, normalizeAppLanguage } from '@/src/lib/language';
 
@@ -198,7 +199,9 @@ export async function searchBible(query: string, lang: string = 'es', limit: num
   }
 
   try {
+    warmBackendIfLikelyNeeded();
     const response = await fetch(`${resolveConfiguredApiUrl('/api/bible/search')}?${params.toString()}`);
+    markBackendReady();
     if (!response.ok) {
       throw new Error('Failed to search Bible');
     }

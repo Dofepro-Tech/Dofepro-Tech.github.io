@@ -18,7 +18,7 @@ import { RandomVerseModal } from '@/src/components/RandomVerseModal';
 import { FALLBACK_BIBLE_BOOKS } from '@/src/lib/fallbackBooks';
 import { fetchBooks, fetchChapter } from '@/src/services/bibleApi';
 import type { Book, Bookmark, ChapterData, SidebarBookFilter, Verse } from '@/src/types';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { RightSidebar } from '@/src/components/RightSidebar';
 import { useTranslation } from 'react-i18next';
 import { normalizeAppLanguage } from '@/src/lib/language';
@@ -28,8 +28,10 @@ import { useReaderPreferences } from '@/src/hooks/useReaderPreferences';
 import { useReaderLibrary } from '@/src/hooks/useReaderLibrary';
 import { useReadingChallenges } from '@/src/hooks/useReadingChallenges';
 import { dismissAppUpdateVersion, fetchLatestAppUpdate, getAppUpdateTargetUrl, getCurrentAppVersion, getDismissedAppUpdateVersion, shouldPromptForAppUpdate, type AppUpdateManifest } from '@/src/lib/appUpdate';
+import { getBackendStatusSnapshot, getBackendWarmupDescription, getBackendWarmupTitle, subscribeBackendStatus, type BackendStatusSnapshot, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
 import { getAppShareUrl, shareContent, shareInstalledAndroidApp, type SharePayload } from '@/src/lib/share';
 import { getRandomVerseId, getVerseById } from '@/src/lib/dailyVerse';
+import { Loader2 } from 'lucide-react';
 
 function normalizeBookKey(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -118,6 +120,7 @@ export default function App() {
     url: '',
   });
   const [startupVerseId] = useState(() => getRandomVerseId());
+  const [backendStatus, setBackendStatus] = useState<BackendStatusSnapshot>(() => getBackendStatusSnapshot());
   const startupVerse = useMemo(() => getVerseById(startupVerseId, currentLang), [currentLang, startupVerseId]);
   const {
     isDarkMode,
@@ -421,6 +424,66 @@ export default function App() {
   }, [selectedBook, selectedChapter]);
 
   useEffect(() => {
+    return subscribeBackendStatus((nextSnapshot) => {
+      setBackendStatus(nextSnapshot);
+    });
+  }, []);
+
+  useEffect(() => {
+    const triggerWarmup = () => {
+      warmBackendIfLikelyNeeded();
+    };
+
+    triggerWarmup();
+
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        triggerWarmup();
+      }
+    };
+
+    window.addEventListener('focus', triggerWarmup);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    let isDisposed = false;
+    let nativeListener: { remove: () => void } | null = null;
+    let nativeListenerPromise: Promise<{ remove: () => void }> | null = null;
+
+    if (isNativePlatform) {
+      nativeListenerPromise = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          triggerWarmup();
+        }
+      });
+
+      void nativeListenerPromise.then((listener) => {
+        if (isDisposed) {
+          void listener.remove();
+          return;
+        }
+
+        nativeListener = listener;
+      });
+    }
+
+    return () => {
+      isDisposed = true;
+      window.removeEventListener('focus', triggerWarmup);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      if (nativeListener) {
+        void nativeListener.remove();
+      } else if (nativeListenerPromise) {
+        void nativeListenerPromise.then((listener) => listener.remove());
+      }
+    };
+  }, [isNativePlatform]);
+
+  useEffect(() => {
     if (!selectedBook || !selectedChapter) {
       return;
     }
@@ -713,6 +776,31 @@ export default function App() {
       />
       
       <main className="flex-1 min-w-0 relative h-full">
+        <AnimatePresence>
+          {!isBootSplashVisible && backendStatus.phase === 'waking' && (
+            <motion.div
+              initial={{ opacity: 0, y: -12, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: -12, x: '-50%' }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="fixed left-1/2 z-[70] w-[min(92vw,36rem)]"
+              style={{ top: 'max(env(safe-area-inset-top), 0.75rem)' }}
+            >
+              <div className="rounded-[28px] border border-[#f0c15c]/30 bg-[#081426]/92 px-4 py-3 text-white shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-[#f0c15c]">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#f0c15c]">{getBackendWarmupTitle(currentLang)}</p>
+                    <p className="mt-1 text-sm leading-6 text-white/82">{getBackendWarmupDescription(currentLang)}</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {mainView === 'home' ? (
           <HomeScreen
             books={books}

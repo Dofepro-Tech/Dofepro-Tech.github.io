@@ -1,5 +1,6 @@
 import type { AiRuntimeConfig, ChatMessage, StudyStep } from '@/src/types';
 import { canUseConfiguredApi, resolveConfiguredApiUrl } from '@/src/lib/apiConfig';
+import { markBackendReady, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
 import { normalizeAppLanguage } from '@/src/lib/language';
 
 const AI_MODEL_OVERRIDE_KEY = 'bible_ai_model_override';
@@ -48,6 +49,7 @@ export function getStoredAiModelOverride() {
 
 async function postAI<T>(path: string, payload: unknown, language: 'es' | 'en'): Promise<T> {
   ensureAiFeaturesAvailable(language);
+  warmBackendIfLikelyNeeded();
 
   const response = await fetch(`${API_BASE_URL}/${path}`, {
     method: 'POST',
@@ -59,6 +61,7 @@ async function postAI<T>(path: string, payload: unknown, language: 'es' | 'en'):
       modelOverride: getStoredModelOverride() || undefined,
     }),
   });
+  markBackendReady();
 
   const contentType = response.headers.get('content-type') || '';
   const data = contentType.includes('application/json') ? await response.json() : null;
@@ -131,8 +134,10 @@ export async function generateStudyStep(
 
 export async function getAiRuntimeConfig(lang: string = 'es'): Promise<AiRuntimeConfig> {
   ensureAiFeaturesAvailable(normalizeAppLanguage(lang));
+  warmBackendIfLikelyNeeded();
 
   const response = await fetch(`${API_BASE_URL}/runtime`);
+  markBackendReady();
 
   if (!response.ok) {
     throw new Error('Could not load AI runtime configuration.');
