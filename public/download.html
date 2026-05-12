@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Biblia DJ | Descargar App</title>
+    <meta name="description" content="Abre Biblia DJ en la web o descarga el APK oficial para Android." />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./favicon.png" />
+    <style>
+      :root {
+        --bg-top: #0f2f57;
+        --bg-bottom: #081525;
+        --panel: rgba(7, 21, 37, 0.82);
+        --panel-border: rgba(150, 198, 255, 0.18);
+        --text: #f4f8ff;
+        --muted: rgba(229, 239, 255, 0.72);
+        --gold: #f3c96f;
+        --gold-deep: #d59b22;
+        --blue-soft: #7fc0ff;
+        --button-dark: rgba(255, 255, 255, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(127, 192, 255, 0.22), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(243, 201, 111, 0.14), transparent 32%),
+          linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+      }
+
+      .shell {
+        width: min(1120px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--panel-border);
+        border-radius: 32px;
+        background:
+          linear-gradient(135deg, rgba(9, 24, 42, 0.9), rgba(10, 39, 74, 0.68)),
+          linear-gradient(135deg, rgba(127, 192, 255, 0.14), transparent 42%);
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+      }
+
+      .hero::before,
+      .hero::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(18px);
+        opacity: 0.7;
+      }
+
+      .hero::before {
+        width: 220px;
+        height: 220px;
+        top: -80px;
+        right: -40px;
+        background: rgba(127, 192, 255, 0.18);
+      }
+
+      .hero::after {
+        width: 180px;
+        height: 180px;
+        bottom: -60px;
+        left: -30px;
+        background: rgba(243, 201, 111, 0.16);
+      }
+
+      .hero-grid {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+        gap: 28px;
+        padding: 40px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--blue-soft);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 20px 0 14px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2.5rem, 7vw, 4.6rem);
+        line-height: 0.96;
+      }
+
+      .lead {
+        max-width: 40rem;
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.7;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 28px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 54px;
+        padding: 0 22px;
+        border-radius: 18px;
+        border: 1px solid transparent;
+        text-decoration: none;
+        font-weight: 700;
+        transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+      }
+
+      .button-primary {
+        background: linear-gradient(135deg, var(--gold) 0%, var(--gold-deep) 100%);
+        color: #14243b;
+      }
+
+      .button-secondary {
+        background: var(--button-dark);
+        color: var(--text);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+
+      .card {
+        border-radius: 26px;
+        border: 1px solid var(--panel-border);
+        background: var(--panel);
+        padding: 24px;
+        backdrop-filter: blur(16px);
+      }
+
+      .card h2,
+      .card h3 {
+        margin: 0 0 12px;
+        font-size: 1.1rem;
+      }
+
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+      }
+
+      .stat {
+        min-width: 0;
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .stat strong {
+        display: block;
+        font-size: clamp(1.05rem, 2.8vw, 1.35rem);
+        line-height: 1.2;
+        margin-top: 8px;
+      }
+
+      .notes {
+        margin-top: 28px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .notes .card {
+        min-width: 0;
+        min-height: 170px;
+      }
+
+      .footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 24px;
+        color: rgba(231, 241, 255, 0.62);
+        font-size: 0.9rem;
+      }
+
+      .small-link {
+        color: var(--blue-soft);
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .support-link {
+        color: inherit;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .support-link:hover {
+        color: var(--blue-soft);
+        text-decoration: underline;
+      }
+
+      @media (max-width: 860px) {
+        .hero-grid,
+        .notes,
+        .stat-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-grid {
+          padding: 26px;
+        }
+
+        .shell {
+          width: min(100vw - 20px, 1120px);
+          padding-top: 14px;
+        }
+
+        h1 {
+          line-height: 1.02;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <div class="eyebrow">Biblia DJ | Enlace oficial</div>
+            <h1>Comparte la app o abre la lectura al instante.</h1>
+            <p class="lead">
+              Este es el enlace público oficial de Biblia DJ. Si alguien recibió un versículo compartido,
+              aquí puede abrir la versión web o descargar el APK para Android.
+            </p>
+
+            <div class="actions">
+              <a class="button button-primary" href="./biblia-dj-android.apk" download>Descargar APK Android</a>
+              <a class="button button-secondary" data-open-web href="./">Abrir versión web</a>
+            </div>
+
+            <div class="stat-grid">
+              <div class="stat">
+                <span>Formato</span>
+                <strong>APK Android</strong>
+              </div>
+              <div class="stat">
+                <span>Acceso rápido</span>
+                <strong>Versión web</strong>
+              </div>
+              <div class="stat">
+                <span>Soporte</span>
+                <strong><a class="support-link" href="mailto:dofeprotech@gmail.com">dofeprotech@gmail.com</a></strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="card">
+              <h2>Android</h2>
+              <p>
+                Descarga el APK oficial y ábrelo desde tu dispositivo Android. Si Android te lo pide,
+                permite la instalación desde origen externo para completar la instalación.
+              </p>
+            </div>
+            <div class="card">
+              <h2>iPhone y iPad</h2>
+              <p>
+                Mientras la app no esté en App Store, usa la versión web desde este mismo enlace.
+                El contenido compartido seguirá abriendo correctamente la página pública.
+              </p>
+            </div>
+            <div class="card">
+              <h2>Versículos compartidos</h2>
+              <p>
+                Cuando compartas un versículo o la app, las personas verán este enlace público en vez de una
+                URL local del teléfono.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="notes">
+        <article class="card">
+          <h3>Qué incluye</h3>
+          <p>
+            Lectura bíblica, contenido diario, favoritos, planes y acceso a la experiencia web pública desde el navegador.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Privacidad</h3>
+          <p>
+            Si necesitas la politica de privacidad o soporte, escribe a <a class="small-link" href="mailto:dofeprotech@gmail.com">dofeprotech@gmail.com</a>.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Comparte</h3>
+          <p>
+            Puedes reenviar este mismo enlace a otras personas para que abran Biblia DJ o descarguen el APK.
+          </p>
+        </article>
+      </section>
+
+      <div class="footer">
+        <span>© 2026 Dofepro-Tech | Biblia DJ</span>
+        <a class="small-link" href="mailto:dofeprotech@gmail.com">dofeprotech@gmail.com</a>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const openWebLink = document.querySelector('[data-open-web]');
+        if (!(openWebLink instanceof HTMLAnchorElement)) {
+          return;
+        }
+
+        const currentParams = new URLSearchParams(window.location.search);
+        const book = currentParams.get('book');
+        const chapter = currentParams.get('chapter');
+        const verse = currentParams.get('verse');
+
+        if (!book || !chapter || !verse) {
+          return;
+        }
+
+        const targetUrl = new URL('./', window.location.href);
+        targetUrl.searchParams.set('book', book);
+        targetUrl.searchParams.set('chapter', chapter);
+        targetUrl.searchParams.set('verse', verse);
+        openWebLink.href = targetUrl.toString();
+      })();
+    </script>
+  </body>
+</html>

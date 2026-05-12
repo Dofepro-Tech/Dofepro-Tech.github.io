@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --olive: #5A5A40;
+  --olive-dark: #42422f;
+  --olive-light: #7c7c63;
+  --paper: #f5f5f0;
+  --paper-light: #ffffff;
+  --ink: #2a2a22;
+  --ink-light: #4A4A3F;
+  --gold: #c2a153; /* Default accent */
+  --border: rgba(90, 90, 64, 0.2);
+  
+  --primary: var(--gold);
+  --primary-rgb: 194, 161, 83;
+}
+
+.dark {
+  --olive: #94a3b8;
+  --olive-dark: #64748b;
+  --olive-light: #cbd5e1;
+  --paper: #020617; 
+  --paper-light: #0f172a; 
+  --ink: #f8fafc;
+  --ink-light: #94a3b8;
+  --gold: #f59e0b;
+  --border: rgba(255, 255, 255, 0.08);
+
+  --primary: var(--gold);
+}
+
+/* Color Themes */
+[data-theme='blue'] { --primary: #3b82f6; --primary-rgb: 59, 130, 246; }
+[data-theme='green'] { --primary: #10b981; --primary-rgb: 16, 185, 129; }
+[data-theme='red'] { --primary: #ef4444; --primary-rgb: 239, 68, 68; }
+[data-theme='purple'] { --primary: #8b5cf6; --primary-rgb: 139, 92, 246; }
+[data-theme='olive'] { --primary: #5A5A40; --primary-rgb: 90, 90, 64; }
+[data-theme='violet'] { --primary: #4c1d95; --primary-rgb: 76, 29, 149; }
+[data-theme='slate'] { --primary: #475569; --primary-rgb: 71, 85, 105; }
+[data-theme='indigo'] { --primary: #6366f1; --primary-rgb: 99, 102, 241; }
+[data-theme='teal'] { --primary: #14b8a6; --primary-rgb: 20, 184, 166; }
+[data-theme='rose'] { --primary: #f43f5e; --primary-rgb: 244, 63, 94; }
+[data-theme='amber'] { --primary: #f59e0b; --primary-rgb: 245, 158, 11; }
+[data-theme='orange'] { --primary: #f97316; --primary-rgb: 249, 115, 22; }
+
+@theme {
+  --color-olive: var(--olive);
+  --color-olive-dark: var(--olive-dark);
+  --color-olive-light: var(--olive-light);
+  --color-paper: var(--paper);
+  --color-paper-light: var(--paper-light);
+  --color-ink: var(--ink);
+  --color-ink-light: var(--ink-light);
+  --color-gold: var(--primary); /* Gold now follows primary */
+
+  --font-serif: "Cormorant+Garamond", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-serif);
+  background-color: #0b1f4f;
+  color: var(--color-ink);
+  margin: 0;
+  padding: 0;
+  overflow: hidden; 
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 10px;
+}
+
+.custom-markdown p { margin-bottom: 0.75rem; }
+.custom-markdown p:last-child { margin-bottom: 0; }
+.custom-markdown strong { color: var(--color-ink); font-weight: 600; }
+.custom-markdown ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.custom-markdown li { margin-bottom: 0.25rem; }
+.custom-markdown blockquote { border-left: 3px solid var(--color-gold); padding-left: 1rem; color: var(--color-ink-light); font-style: italic; margin-bottom: 0.75rem;}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

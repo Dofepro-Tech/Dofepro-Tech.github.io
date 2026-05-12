@@ -1,0 +1,93 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Resolve Pages URL
+        id: pages
+        shell: bash
+        run: |
+          owner="${GITHUB_REPOSITORY%%/*}"
+          repo="${GITHUB_REPOSITORY#*/}"
+
+          if [ "$repo" = "${owner}.github.io" ]; then
+            base_path="/"
+            site_url="https://${owner}.github.io/"
+          else
+            base_path="/${repo}/"
+            site_url="https://${owner}.github.io/${repo}/"
+          fi
+
+          echo "base_path=$base_path" >> "$GITHUB_OUTPUT"
+          echo "site_url=$site_url" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app for Pages
+        env:
+          VITE_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          VITE_APP_DOWNLOAD_URL: ${{ steps.pages.outputs.site_url }}download.html
+          VITE_APP_UPDATE_URL: ${{ steps.pages.outputs.site_url }}app-update.json
+        run: npm run build
+
+      - name: Attach APK to Pages artifact
+        shell: bash
+        run: |
+          if [ -f "release/biblia-dj-release-public.apk" ]; then
+            cp "release/biblia-dj-release-public.apk" "dist/biblia-dj-android.apk"
+          elif [ -f "build/deliverables/biblia-dj-android-release.apk" ]; then
+            cp "build/deliverables/biblia-dj-android-release.apk" "dist/biblia-dj-android.apk"
+          else
+            echo "No public APK found. Expected release/biblia-dj-release-public.apk or build/deliverables/biblia-dj-android-release.apk"
+            exit 1
+          fi
+
+          touch "dist/.nojekyll"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

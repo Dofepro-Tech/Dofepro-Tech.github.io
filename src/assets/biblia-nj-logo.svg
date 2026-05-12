@@ -1,0 +1,98 @@
+<svg width="768" height="768" viewBox="0 0 768 768" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(384 272) rotate(90) scale(560)">
+      <stop stop-color="#0F2A63"/>
+      <stop offset="0.62" stop-color="#081C4A"/>
+      <stop offset="1" stop-color="#041232"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="418" y1="96" x2="598" y2="570" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF2AE"/>
+      <stop offset="0.38" stop-color="#FFD96B"/>
+      <stop offset="0.72" stop-color="#E9B841"/>
+      <stop offset="1" stop-color="#B87A10"/>
+    </linearGradient>
+    <linearGradient id="red" x1="100" y1="126" x2="244" y2="493" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF4D4D"/>
+      <stop offset="0.4" stop-color="#FF1E32"/>
+      <stop offset="1" stop-color="#D60000"/>
+    </linearGradient>
+    <linearGradient id="page" x1="164" y1="508" x2="604" y2="622" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF8"/>
+      <stop offset="0.52" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFE8DA"/>
+    </linearGradient>
+    <linearGradient id="pageEdge" x1="164" y1="548" x2="604" y2="548" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E1B143"/>
+      <stop offset="0.5" stop-color="#FFEEB3"/>
+      <stop offset="1" stop-color="#D89C1C"/>
+    </linearGradient>
+    <linearGradient id="titleGold" x1="386" y1="585" x2="526" y2="628" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE993"/>
+      <stop offset="0.55" stop-color="#FFD24D"/>
+      <stop offset="1" stop-color="#C89012"/>
+    </linearGradient>
+    <filter id="shadow" x="8" y="8" width="752" height="752" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="12"/>
+      <feGaussianBlur stdDeviation="22"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0.0352941 0 0 0 0 0.121569 0 0 0 0.42 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_2"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_2" result="shape"/>
+    </filter>
+    <filter id="glow" x="312" y="336" width="150" height="188" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="12" result="effect1_foregroundBlur_1_2"/>
+    </filter>
+    <filter id="textShadow" x="138" y="108" width="490" height="470" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="10"/>
+      <feGaussianBlur stdDeviation="10"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0117647 0 0 0 0 0.0431373 0 0 0 0 0.152941 0 0 0 0.35 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_2"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_2" result="shape"/>
+    </filter>
+  </defs>
+
+  <circle cx="384" cy="384" r="352" fill="#FFFFFF" stroke="#D9A12B" stroke-width="4"/>
+  <g filter="url(#shadow)">
+    <circle cx="384" cy="384" r="338" fill="url(#bg)"/>
+  </g>
+
+  <path d="M145 469C98 423 72 363 72 295C72 182 150 90 261 63" stroke="url(#red)" stroke-width="22" stroke-linecap="round"/>
+  <path d="M640 468C684 421 708 361 708 295C708 184 633 93 527 61" stroke="url(#gold)" stroke-width="22" stroke-linecap="round"/>
+
+  <g filter="url(#textShadow)">
+    <text x="172" y="432" fill="#F6F5F2" font-size="378" font-weight="700" style="font-family: Georgia, 'Times New Roman', serif; letter-spacing: -18px;">D</text>
+    <text x="408" y="445" fill="url(#gold)" font-size="402" font-weight="700" style="font-family: Georgia, 'Times New Roman', serif; letter-spacing: -24px;">J</text>
+  </g>
+  <path d="M205 478C242 468 286 463 337 463C358 463 374 475 384 489C394 475 410 463 431 463C482 463 526 468 563 478" stroke="#17305D" stroke-width="10" stroke-linecap="round" opacity="0.54"/>
+
+  <g>
+    <path d="M157 525C192 506 241 498 303 500C337 501 365 509 384 521C403 509 431 501 465 500C527 498 576 506 611 525L627 544C578 544 527 550 473 562C442 569 412 579 384 592C356 579 326 569 295 562C241 550 190 544 141 544L157 525Z" fill="url(#page)"/>
+    <path d="M141 544C191 544 243 551 296 563C326 570 356 580 384 594V615C349 598 312 586 274 578C232 570 188 566 142 566L141 544Z" fill="#F5F0E5"/>
+    <path d="M627 544C577 544 525 551 472 563C442 570 412 580 384 594V615C419 598 456 586 494 578C536 570 580 566 626 566L627 544Z" fill="#F5F0E5"/>
+    <path d="M162 522C194 506 241 500 304 503C339 505 366 514 384 527C402 514 429 505 464 503C527 500 574 506 606 522" stroke="#17305D" stroke-width="8" stroke-linecap="round"/>
+    <path d="M141 544C191 544 243 551 296 563C326 570 356 580 384 594C412 580 442 570 472 563C525 551 577 544 627 544" stroke="#17305D" stroke-width="8" stroke-linecap="round"/>
+    <path d="M165 547C214 548 267 555 320 570" stroke="url(#pageEdge)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M603 547C554 548 501 555 448 570" stroke="url(#pageEdge)" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <g filter="url(#glow)">
+    <path d="M383 362L404 405H431L398 431L411 477L383 452L355 477L368 431L335 405H362L383 362Z" fill="#FFC93B"/>
+  </g>
+  <path d="M383 372V462" stroke="#FFF6C9" stroke-width="10" stroke-linecap="round"/>
+  <path d="M354 414H412" stroke="#FFF6C9" stroke-width="10" stroke-linecap="round"/>
+
+  <text x="384" y="642" text-anchor="middle" fill="#FFFFFF" font-size="84" font-weight="500" style="font-family: Georgia, 'Times New Roman', serif; letter-spacing: 1px;">Biblia <tspan fill="url(#titleGold)">DJ</tspan></text>
+  <text x="384" y="692" text-anchor="middle" fill="#F6F3E8" font-size="24" font-weight="600" style="font-family: system-ui, sans-serif; letter-spacing: 0.3px;">La Palabra que transforma vidas</text>
+  <circle cx="240" cy="688" r="3.5" fill="#E0B24C"/>
+  <circle cx="528" cy="688" r="3.5" fill="#E0B24C"/>
+  <path d="M274 688H350" stroke="#E0B24C" stroke-width="4" stroke-linecap="round"/>
+  <path d="M418 688H494" stroke="#E0B24C" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="384" cy="718" r="6" fill="#E0B24C"/>
+  <path d="M334 718H374" stroke="#E0B24C" stroke-width="4" stroke-linecap="round"/>
+  <path d="M394 718H434" stroke="#E0B24C" stroke-width="4" stroke-linecap="round"/>
+</svg>
