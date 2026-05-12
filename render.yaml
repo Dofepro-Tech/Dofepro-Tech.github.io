@@ -2,7 +2,7 @@ services:
   - type: web
     name: biblia-dj
     runtime: node
-    plan: starter
+    plan: free
     autoDeploy: true
     buildCommand: npm ci && npm run build
     startCommand: npm start
