@@ -57,34 +57,5 @@ export default defineConfig(({mode}) => {
         },
       },
     },
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (!id.includes('node_modules')) {
-              return;
-            }
-
-            if (id.includes('react-dom') || id.includes(`${path.sep}react${path.sep}`)) {
-              return 'react-vendor';
-            }
-
-            if (id.includes('i18next') || id.includes('react-i18next')) {
-              return 'i18n-vendor';
-            }
-
-            if (id.includes('lucide-react')) {
-              return 'icons-vendor';
-            }
-
-            if (id.includes('react-markdown')) {
-              return 'markdown-vendor';
-            }
-
-            return 'vendor';
-          },
-        },
-      },
-    },
   };
 });
