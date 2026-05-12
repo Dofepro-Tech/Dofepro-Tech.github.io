@@ -1,6 +1,6 @@
-# Biblia NJ
+# Bíblia DJ
 
-Aplicación de lectura, exploración y estudio bíblico con cliente React, backend Express, soporte de IA vía servidor, búsqueda global en la Biblia y empaquetado móvil con Capacitor para Android.
+Bíblia DJ es una aplicación de lectura, exploración y estudio bíblico con cliente React, backend Express, soporte de IA vía servidor, búsqueda global en la Biblia y empaquetado móvil con Capacitor para Android.
 
 Para que la experiencia pública quede completa y estable, el backend debe estar publicado en HTTPS. GitHub Pages por sí sola no puede ejecutar las rutas `/api/*`.
 
@@ -18,6 +18,8 @@ Para que la experiencia pública quede completa y estable, el backend debe estar
 
 ## Vista Rápida
 
+- Sitio oficial: [https://dofepro-tech.github.io/biblia-dj/](https://dofepro-tech.github.io/biblia-dj/)
+- APK oficial: [https://dofepro-tech.github.io/biblia-dj-android.apk](https://dofepro-tech.github.io/biblia-dj-android.apk)
 - Preview local: [http://localhost:3000](http://localhost:3000)
 - Política de privacidad: [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 - Licencia: [LICENSE](LICENSE)
