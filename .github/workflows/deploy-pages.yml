@@ -57,8 +57,9 @@ jobs:
       - name: Build web app for Pages
         env:
           VITE_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-          VITE_APP_DOWNLOAD_URL: ${{ steps.pages.outputs.site_url }}download.html
+          VITE_APP_DOWNLOAD_URL: ${{ steps.pages.outputs.site_url }}biblia-dj/
           VITE_APP_UPDATE_URL: ${{ steps.pages.outputs.site_url }}app-update.json
+          VITE_APP_APK_URL: ${{ steps.pages.outputs.site_url }}biblia-dj-android.apk
         run: npm run build
 
       - name: Attach APK to Pages artifact

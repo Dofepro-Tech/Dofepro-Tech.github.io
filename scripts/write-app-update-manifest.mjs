@@ -24,9 +24,12 @@ const downloadUrl = (
   || ''
 ).trim();
 const explicitUpdateUrl = (process.env.VITE_APP_UPDATE_URL || '').trim();
+const explicitApkUrl = (process.env.VITE_APP_APK_URL || '').trim();
 
 const updateUrl = explicitUpdateUrl || (downloadUrl ? new URL('app-update.json', downloadUrl).toString() : '');
-const apkUrl = downloadUrl ? new URL('biblia-dj-android.apk', downloadUrl).toString() : '';
+const apkUrl = explicitApkUrl
+  || (updateUrl ? new URL('biblia-dj-android.apk', updateUrl).toString() : '')
+  || (downloadUrl ? new URL('biblia-dj-android.apk', downloadUrl).toString() : '');
 
 const manifest = {
   version,
