@@ -73,10 +73,6 @@ export default defineConfig(({mode}) => {
               return 'i18n-vendor';
             }
 
-            if (id.includes(`${path.sep}motion${path.sep}`)) {
-              return 'motion-vendor';
-            }
-
             if (id.includes('lucide-react')) {
               return 'icons-vendor';
             }
