@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getDeterministicIndex, getLocalDateKey, getPreviousDateKey } from '@/src/lib/challenges';
 import { getDailyContent, type DailyContentCollection, type DailyContentKind, type DailyResourceCard } from '@/src/lib/dailyContent';
-import { fetchDailyContent, type RemoteDailyContentPayload } from '@/src/services/dailyContentApi';
+import { canFetchDailyContentRemotely, fetchDailyContent, type RemoteDailyContentPayload } from '@/src/services/dailyContentApi';
 
 const SECTION_LIMIT = 4;
 const FRESH_SECTION_CARD_COUNT = 2;
@@ -344,6 +344,10 @@ export function useDailyContent(language: 'es' | 'en') {
 
   useEffect(() => {
     setDailyContent(buildDailyContentCollection(language, fallbackContent, null, dateKey));
+
+    if (!canFetchDailyContentRemotely()) {
+      return undefined;
+    }
 
     const controller = new AbortController();
     let isDisposed = false;
