@@ -128,6 +128,14 @@ function getConfiguredModel(provider: AiProvider): string {
   return process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 }
 
+function hasProviderCredentials(provider: AiProvider) {
+  if (provider === 'openrouter') {
+    return Boolean(process.env.OPENROUTER_API_KEY?.trim());
+  }
+
+  return Boolean(process.env.GEMINI_API_KEY?.trim());
+}
+
 function isModelOverrideAllowed() {
   return process.env.ALLOW_CLIENT_MODEL_OVERRIDE === 'true' || process.env.NODE_ENV !== 'production';
 }
@@ -340,6 +348,10 @@ export function getCurrentAiProvider() {
 
 export function getCurrentAiModel() {
   return getConfiguredModel(getConfiguredProvider());
+}
+
+export function isAiProviderConfigured(provider: AiProvider = getConfiguredProvider()) {
+  return hasProviderCredentials(provider);
 }
 
 export function getAvailableAiModels(provider: AiProvider = getConfiguredProvider()) {

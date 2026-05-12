@@ -22,6 +22,8 @@
 ## 3. Producción backend
 
 - Desplegar el backend Express en un hosting con HTTPS.
+- Si quieres que web e IA funcionen siempre, no dependas solo de GitHub Pages para la app completa; publica el backend en un host Node estable y usa Pages solo como landing o como cliente estático con `VITE_API_BASE_URL`.
+- Si usas Render, el proyecto ya incluye `render.yaml` y el healthcheck en `/api/health`.
 - Configurar en el hosting las variables:
 
 ```dotenv
@@ -33,6 +35,7 @@ OPENROUTER_APP_NAME=Biblia NJ
 ```
 
 - Confirmar que el backend responda en rutas como `/api/ai/explain`.
+- Confirmar que `/api/health` devuelva `status: ok` y `ai.configured: true`.
 - Confirmar que el dominio público use HTTPS.
 - Si frontend y backend se separan, definir `ALLOWED_ORIGINS` en el backend.
 - Confirmar que `/assets/*.css` y `/assets/*.js` respondan con MIME correcto.
@@ -49,6 +52,7 @@ OPENROUTER_APP_NAME=Biblia NJ
 - Hacer backup seguro del `.jks` y de `android/keystore.properties`; sin ellos no podrás publicar actualizaciones firmadas con la misma identidad.
 - Configurar la app móvil para consumir el backend público por HTTPS.
 - Definir una variable pública de cliente solo para la URL del backend.
+- Si la web seguirá en GitHub Pages, definir `PUBLIC_API_BASE_URL` como variable del repositorio y activar `REQUIRE_PUBLIC_API_BASE_URL=true` para impedir publicaciones sin backend público.
 - No almacenar claves de OpenRouter en la app.
 - Para pruebas Android locales, usar `VITE_API_BASE_URL` con la IP LAN del backend.
 - Recordar que la build release solo saldrá firmada si existe `android/keystore.properties` con un keystore válido.

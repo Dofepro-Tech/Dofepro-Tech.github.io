@@ -1,4 +1,5 @@
 import type { DailyResourceCard } from '@/src/lib/dailyContent';
+import { canUseConfiguredApi, resolveConfiguredApiUrl } from '@/src/lib/apiConfig';
 
 export interface RemoteDailyContentPayload {
   fetchedAt: string;
@@ -9,37 +10,13 @@ export interface RemoteDailyContentPayload {
   testimonies: DailyResourceCard[];
 }
 
-function resolveInternalApiUrl(path: string) {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-
-  if (!configuredBaseUrl) {
-    return path;
-  }
-
-  return `${configuredBaseUrl.replace(/\/+$/, '')}${path}`;
-}
-
 export function canFetchDailyContentRemotely() {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (configuredBaseUrl) {
-    return true;
-  }
-
-  if (!import.meta.env.DEV) {
-    return false;
-  }
-
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  const hostname = window.location.hostname.trim().toLowerCase();
-  return hostname === 'localhost' || hostname === '127.0.0.1';
+  return canUseConfiguredApi();
 }
 
 export async function fetchDailyContent(language: 'es' | 'en', signal?: AbortSignal): Promise<RemoteDailyContentPayload> {
   const params = new URLSearchParams({ lang: language });
-  const response = await fetch(`${resolveInternalApiUrl('/api/daily-content')}?${params.toString()}`, {
+  const response = await fetch(`${resolveConfiguredApiUrl('/api/daily-content')}?${params.toString()}`, {
     signal,
     cache: 'no-store',
   });

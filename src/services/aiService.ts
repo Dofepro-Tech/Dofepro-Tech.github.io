@@ -1,39 +1,18 @@
 import type { AiRuntimeConfig, ChatMessage, StudyStep } from '@/src/types';
+import { canUseConfiguredApi, resolveConfiguredApiUrl } from '@/src/lib/apiConfig';
 import { normalizeAppLanguage } from '@/src/lib/language';
 
 const AI_MODEL_OVERRIDE_KEY = 'bible_ai_model_override';
-
-function resolveApiBaseUrl() {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-
-  if (!configuredBaseUrl) {
-    return '/api/ai';
-  }
-
-  const sanitizedBaseUrl = configuredBaseUrl.replace(/\/+$/, '');
-  return sanitizedBaseUrl.endsWith('/api/ai') ? sanitizedBaseUrl : `${sanitizedBaseUrl}/api/ai`;
-}
-
-const API_BASE_URL = resolveApiBaseUrl();
+const API_BASE_URL = resolveConfiguredApiUrl('/api/ai');
 
 export function canUseAiFeatures() {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (configuredBaseUrl) {
-    return true;
-  }
-
-  if (!import.meta.env.DEV || typeof window === 'undefined') {
-    return false;
-  }
-
-  const hostname = window.location.hostname.trim().toLowerCase();
-  return hostname === 'localhost' || hostname === '127.0.0.1';
+  return canUseConfiguredApi();
 }
 
 export function getAiUnavailableMessage(language: 'es' | 'en') {
   return language === 'en'
-    ? 'AI features need a configured API service. They are unavailable in the static web build until the backend is published.'
-    : 'Las funciones de IA necesitan una API configurada. No están disponibles en la web estática hasta publicar el backend.';
+    ? 'AI features need a configured API service. They are unavailable until the backend is published or the web is served from the same backend origin.'
+    : 'Las funciones de IA necesitan una API configurada. No están disponibles hasta publicar el backend o servir la web desde el mismo origen del backend.';
 }
 
 function ensureAiFeaturesAvailable(language: 'es' | 'en') {

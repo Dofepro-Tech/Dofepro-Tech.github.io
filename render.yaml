@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: biblia-dj
+    runtime: node
+    plan: starter
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: VITE_USE_SAME_ORIGIN_API
+        value: true
+      - key: VITE_PUBLIC_BASE_PATH
+        value: /
+      - key: AI_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-4o-mini
+      - key: OPENROUTER_APP_NAME
+        value: Biblia DJ
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_SITE_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false

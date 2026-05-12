@@ -1,4 +1,5 @@
 import type { BibleSearchResponse, Book, ChapterData } from '@/src/types';
+import { canUseConfiguredApi, resolveConfiguredApiUrl } from '@/src/lib/apiConfig';
 import { FALLBACK_BIBLE_BOOKS } from '@/src/lib/fallbackBooks';
 import { getBibleVersion, normalizeAppLanguage } from '@/src/lib/language';
 
@@ -21,16 +22,6 @@ const SEARCH_BOOK_ALIASES = FALLBACK_BIBLE_BOOKS
   })
   .sort((left, right) => right.normalizedAlias.length - left.normalizedAlias.length);
 
-function resolveInternalApiUrl(path: string) {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-
-  if (!configuredBaseUrl) {
-    return path;
-  }
-
-  return `${configuredBaseUrl.replace(/\/+$/, '')}${path}`;
-}
-
 function normalizeReferenceToken(value: string) {
   return value
     .normalize('NFD')
@@ -42,23 +33,13 @@ function normalizeReferenceToken(value: string) {
 }
 
 function canUseRemoteBibleSearchApi() {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (configuredBaseUrl) {
-    return true;
-  }
-
-  if (!import.meta.env.DEV || typeof window === 'undefined') {
-    return false;
-  }
-
-  const hostname = window.location.hostname.trim().toLowerCase();
-  return hostname === 'localhost' || hostname === '127.0.0.1';
+  return canUseConfiguredApi();
 }
 
 function getBibleSearchUnavailableMessage(language: 'es' | 'en') {
   return language === 'en'
-    ? 'Full-text search needs a configured API. Reference searches like John 3:16 or Psalms 91 still work.'
-    : 'La búsqueda por palabra necesita una API configurada. Las referencias como Juan 3:16 o Salmos 91 sí funcionan.';
+    ? 'Full-text search needs a configured API. Reference searches like John 3:16 or Psalms 91 still work without it.'
+    : 'La búsqueda por palabra necesita una API configurada. Las referencias como Juan 3:16 o Salmos 91 sí funcionan sin ella.';
 }
 
 function parseSingleBibleReference(segment: string): ParsedBibleReference | null {
@@ -217,7 +198,7 @@ export async function searchBible(query: string, lang: string = 'es', limit: num
   }
 
   try {
-    const response = await fetch(`${resolveInternalApiUrl('/api/bible/search')}?${params.toString()}`);
+    const response = await fetch(`${resolveConfiguredApiUrl('/api/bible/search')}?${params.toString()}`);
     if (!response.ok) {
       throw new Error('Failed to search Bible');
     }

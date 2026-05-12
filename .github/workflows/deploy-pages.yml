@@ -57,6 +57,9 @@ jobs:
       - name: Build web app for Pages
         env:
           VITE_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          VITE_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL }}
+          VITE_USE_SAME_ORIGIN_API: 'false'
+          REQUIRE_PUBLIC_API_BASE_URL: ${{ vars.REQUIRE_PUBLIC_API_BASE_URL || 'false' }}
           VITE_APP_DOWNLOAD_URL: ${{ steps.pages.outputs.site_url }}biblia-dj/
           VITE_APP_UPDATE_URL: ${{ steps.pages.outputs.site_url }}app-update.json
           VITE_APP_APK_URL: ${{ steps.pages.outputs.site_url }}biblia-dj-android.apk

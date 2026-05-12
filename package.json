@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/write-app-update-manifest.mjs",
+    "prebuild": "node scripts/ensure-public-api-config.mjs && node scripts/write-app-update-manifest.mjs",
     "dev": "concurrently -k \"npm:dev:web\" \"npm:dev:api\"",
     "dev:web": "vite --port=3000 --host=0.0.0.0",
     "dev:api": "tsx watch server/index.ts",

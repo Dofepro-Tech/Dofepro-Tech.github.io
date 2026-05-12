@@ -2,6 +2,8 @@
 
 Aplicación de lectura, exploración y estudio bíblico con cliente React, backend Express, soporte de IA vía servidor, búsqueda global en la Biblia y empaquetado móvil con Capacitor para Android.
 
+Para que la experiencia pública quede completa y estable, el backend debe estar publicado en HTTPS. GitHub Pages por sí sola no puede ejecutar las rutas `/api/*`.
+
 ## Qué Incluye
 
 - Lectura por libro, capítulo y versículo.
@@ -40,6 +42,20 @@ npm run preview
 ```
 
 Esto levanta la web en [http://localhost:3000](http://localhost:3000) y el backend en [http://localhost:3001](http://localhost:3001).
+
+## Publicación Estable
+
+- Web estática en GitHub Pages: usa la variable pública `PUBLIC_API_BASE_URL` en GitHub Actions para apuntar al backend HTTPS.
+- Web completa en un host Node: usa `render.yaml` para desplegar frontend y backend juntos en el mismo origen.
+- Android: compila con `VITE_API_BASE_URL` apuntando al backend HTTPS público.
+
+Comprobación mínima del backend publicado:
+
+```bash
+curl https://tu-backend/api/health
+```
+
+La respuesta debe incluir `status: "ok"` y `ai.configured: true`.
 
 ## Documentos
 

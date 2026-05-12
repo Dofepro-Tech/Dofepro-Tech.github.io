@@ -13,6 +13,7 @@ import {
   getAvailableAiModels,
   getCurrentAiModel,
   getCurrentAiProvider,
+  isAiProviderConfigured,
   isClientModelOverrideAllowed,
 } from './aiProvider.ts';
 import { searchBible } from './bibleSearch.ts';
@@ -30,6 +31,7 @@ dotenv.config({ path: path.resolve(projectRoot, '.env.local') });
 dotenv.config({ path: path.resolve(projectRoot, '.env') });
 
 const app = express();
+const serverStartedAt = new Date().toISOString();
 const explicitAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .split(',')
   .map((origin) => origin.trim())
@@ -396,6 +398,25 @@ const handleAiRuntimeConfig: RequestHandler = (_request, response) => {
   });
 };
 
+const handleHealth: RequestHandler = (_request, response) => {
+  const provider = getCurrentAiProvider();
+
+  return response.json({
+    status: 'ok',
+    service: 'biblia-dj-api',
+    timestamp: new Date().toISOString(),
+    startedAt: serverStartedAt,
+    deploymentMode: existsSync(distIndexPath) ? 'fullstack' : 'api-only',
+    appUrl: process.env.APP_URL || null,
+    ai: {
+      provider,
+      configured: isAiProviderConfigured(provider),
+      currentModel: getCurrentAiModel(),
+      overrideAllowed: isClientModelOverrideAllowed(),
+    },
+  });
+};
+
 function registerAiRoutes(routeBase: string) {
   app.post(`${routeBase}/explain`, handleExplain);
   app.post(`${routeBase}/chat`, handleChat);
@@ -404,6 +425,7 @@ function registerAiRoutes(routeBase: string) {
 
 registerAiRoutes('/api/ai');
 registerAiRoutes('/api/gemini');
+app.get('/api/health', handleHealth);
 app.get('/api/ai/runtime', handleAiRuntimeConfig);
 app.get('/api/bible/search', handleBibleSearch);
 app.get('/api/daily-content', handleDailyContent);
