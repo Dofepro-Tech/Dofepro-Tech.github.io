@@ -24,6 +24,9 @@ export interface DailyVerseSelection {
 }
 
 const DAILY_VERSE_CACHE_PREFIX = 'biblia-nj-daily-verse-cache';
+const STARTUP_VERSE_HISTORY_KEY = 'biblia-nj-startup-verse-history-v2';
+const STARTUP_VERSE_RECENT_MEMORY = 12;
+const RANDOM_STARTUP_SELECTION_ATTEMPTS = 8;
 
 const DAILY_CHAPTER_POOL = FALLBACK_BIBLE_BOOKS.flatMap((book) => Array.from(
   { length: book.chapters },
@@ -43,6 +46,29 @@ function mapDailyVerseEntry(entry: DailyVerseEntry, language: AppLanguage): Dail
       id: entry.verseNumber,
       number: entry.verseNumber,
       verse: language === 'en' ? entry.textEn : entry.textEs,
+    },
+  };
+}
+
+function getVerseHistoryId(bookAbrev: string, chapter: number, verseNumber: number) {
+  return `${bookAbrev}:${chapter}:${verseNumber}`;
+}
+
+function getSelectionHistoryId(selection: DailyVerseSelection) {
+  return getVerseHistoryId(selection.bookAbrev, selection.chapter, selection.verse.number);
+}
+
+function mapResolvedVerseSelection(bookName: string, bookAbrev: string, chapter: number, selectedVerse: Verse): DailyVerseSelection {
+  return {
+    id: getVerseHistoryId(bookAbrev, chapter, selectedVerse.number),
+    bookAbrev,
+    chapter,
+    label: buildDailyVerseLabel(bookName, chapter, selectedVerse.number),
+    verse: {
+      id: selectedVerse.id,
+      number: selectedVerse.number,
+      study: selectedVerse.study,
+      verse: selectedVerse.verse,
     },
   };
 }
@@ -100,6 +126,52 @@ function writeCachedDailyVerse(language: AppLanguage, selection: DailyVerseSelec
   }
 }
 
+function readRecentStartupVerseIds() {
+  if (typeof window === 'undefined') {
+    return [] as string[];
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(STARTUP_VERSE_HISTORY_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return Array.isArray(parsedValue)
+      ? parsedValue.filter((value): value is string => typeof value === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentStartupVerseIds(nextHistory: string[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(STARTUP_VERSE_HISTORY_KEY, JSON.stringify(nextHistory));
+  } catch {
+    // Ignore storage failures and keep the random picker functional.
+  }
+}
+
+function getNextStartupVerseHistory(selection: DailyVerseSelection, recentVerseIds: string[]) {
+  const selectedId = getSelectionHistoryId(selection);
+  return [selectedId, ...recentVerseIds.filter((id) => id !== selectedId)]
+    .slice(0, STARTUP_VERSE_RECENT_MEMORY);
+}
+
+function getRandomItem<T>(items: readonly T[]) {
+  if (items.length === 0) {
+    return undefined;
+  }
+
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 function getBundledDailyVerse(language: AppLanguage): DailyVerseSelection {
   const dateKey = getLocalDateKey();
   const entry = DAILY_VERSES[getDeterministicIndex(DAILY_VERSES.length, `${dateKey}-bundled-daily-verse`)];
@@ -109,6 +181,39 @@ function getBundledDailyVerse(language: AppLanguage): DailyVerseSelection {
 
 function buildDailyVerseLabel(bookName: string, chapter: number, verseNumber: number) {
   return `${bookName} ${chapter}:${verseNumber}`;
+}
+
+function pickBundledRandomStartupVerse(language: AppLanguage, excludedVerseIds: string[] = []) {
+  const selectionPool = DAILY_VERSES.filter((entry) => !excludedVerseIds.includes(
+    getVerseHistoryId(entry.bookAbrev, entry.chapter, entry.verseNumber),
+  ));
+
+  return mapDailyVerseEntry(getRandomItem(selectionPool.length > 0 ? selectionPool : DAILY_VERSES) ?? DAILY_VERSES[0], language);
+}
+
+async function resolveWholeBibleRandomStartupVerse(language: AppLanguage, excludedVerseIds: string[]) {
+  for (let attempt = 0; attempt < RANDOM_STARTUP_SELECTION_ATTEMPTS; attempt += 1) {
+    const chapterEntry = getRandomItem(DAILY_CHAPTER_POOL);
+    if (!chapterEntry) {
+      break;
+    }
+
+    const chapterData = await fetchChapter(chapterEntry.book.names[0], chapterEntry.chapter, language);
+    const availableVerses = chapterData.vers.filter((verse) => verse.number > 0 && verse.verse.trim().length > 0);
+    const selectedVerse = getRandomItem(availableVerses);
+    if (!selectedVerse) {
+      continue;
+    }
+
+    const selection = mapResolvedVerseSelection(chapterData.name, chapterEntry.book.abrev, chapterEntry.chapter, selectedVerse);
+    if (excludedVerseIds.includes(getSelectionHistoryId(selection)) && attempt < RANDOM_STARTUP_SELECTION_ATTEMPTS - 1) {
+      continue;
+    }
+
+    return selection;
+  }
+
+  throw new Error('Unable to resolve a random startup verse.');
 }
 
 async function resolveWholeBibleDailyVerse(language: AppLanguage): Promise<DailyVerseSelection> {
@@ -232,6 +337,11 @@ export function getDailyVerse(language: AppLanguage): DailyVerseSelection {
   return readCachedDailyVerse(language) ?? getBundledDailyVerse(language);
 }
 
+export function getRandomStartupVerse(language: AppLanguage): DailyVerseSelection {
+  const recentVerseIds = readRecentStartupVerseIds();
+  return pickBundledRandomStartupVerse(language, recentVerseIds);
+}
+
 export async function hydrateDailyVerse(language: AppLanguage): Promise<DailyVerseSelection> {
   const cachedVerse = readCachedDailyVerse(language);
   if (cachedVerse) {
@@ -244,5 +354,19 @@ export async function hydrateDailyVerse(language: AppLanguage): Promise<DailyVer
     return selection;
   } catch {
     return getBundledDailyVerse(language);
+  }
+}
+
+export async function hydrateStartupVerse(language: AppLanguage): Promise<DailyVerseSelection> {
+  const recentVerseIds = readRecentStartupVerseIds();
+
+  try {
+    const selection = await resolveWholeBibleRandomStartupVerse(language, recentVerseIds);
+    writeRecentStartupVerseIds(getNextStartupVerseHistory(selection, recentVerseIds));
+    return selection;
+  } catch {
+    const fallbackSelection = pickBundledRandomStartupVerse(language, recentVerseIds);
+    writeRecentStartupVerseIds(getNextStartupVerseHistory(fallbackSelection, recentVerseIds));
+    return fallbackSelection;
   }
 }

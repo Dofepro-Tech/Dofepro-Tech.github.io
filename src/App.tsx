@@ -30,7 +30,7 @@ import { useReadingChallenges } from '@/src/hooks/useReadingChallenges';
 import { dismissAppUpdateVersion, fetchLatestAppUpdate, getAppUpdateTargetUrl, getCurrentAppVersion, getDismissedAppUpdateVersion, shouldPromptForAppUpdate, type AppUpdateManifest } from '@/src/lib/appUpdate';
 import { getBackendStatusSnapshot, getBackendWarmupDescription, getBackendWarmupTitle, subscribeBackendStatus, type BackendStatusSnapshot, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
 import { getAppShareUrl, shareContent, shareInstalledAndroidApp, type SharePayload } from '@/src/lib/share';
-import { getDailyVerse, hydrateDailyVerse } from '@/src/lib/dailyVerse';
+import { getRandomStartupVerse, hydrateStartupVerse } from '@/src/lib/dailyVerse';
 import { Loader2 } from 'lucide-react';
 
 function normalizeBookKey(value: string) {
@@ -119,7 +119,7 @@ export default function App() {
     text: '',
     url: '',
   });
-  const [startupVerse, setStartupVerse] = useState(() => getDailyVerse(currentLang));
+  const [startupVerse, setStartupVerse] = useState(() => getRandomStartupVerse(currentLang));
   const [backendStatus, setBackendStatus] = useState<BackendStatusSnapshot>(() => getBackendStatusSnapshot());
   const {
     isDarkMode,
@@ -302,9 +302,9 @@ export default function App() {
   useEffect(() => {
     let isDisposed = false;
 
-    setStartupVerse(getDailyVerse(currentLang));
+    setStartupVerse(getRandomStartupVerse(currentLang));
 
-    void hydrateDailyVerse(currentLang).then((dailyVerse) => {
+    void hydrateStartupVerse(currentLang).then((dailyVerse) => {
       if (!isDisposed) {
         setStartupVerse(dailyVerse);
       }
