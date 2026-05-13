@@ -2,9 +2,13 @@ function sanitizeBaseUrl(value: string) {
   return value.replace(/\/+$/, '');
 }
 
+const DEFAULT_PUBLIC_API_BASE_URL = 'https://biblia-dj.onrender.com';
+
 export function getConfiguredApiBaseUrl() {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-  return configuredBaseUrl ? sanitizeBaseUrl(configuredBaseUrl) : undefined;
+  const fallbackBaseUrl = import.meta.env.PROD ? DEFAULT_PUBLIC_API_BASE_URL : undefined;
+  const resolvedBaseUrl = configuredBaseUrl || fallbackBaseUrl;
+  return resolvedBaseUrl ? sanitizeBaseUrl(resolvedBaseUrl) : undefined;
 }
 
 export function shouldUseSameOriginApi() {

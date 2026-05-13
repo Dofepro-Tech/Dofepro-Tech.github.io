@@ -1,6 +1,8 @@
 import type { Verse } from '@/src/types';
 import { getDeterministicIndex, getLocalDateKey } from '@/src/lib/challenges';
+import { FALLBACK_BIBLE_BOOKS } from '@/src/lib/fallbackBooks';
 import type { AppLanguage } from '@/src/lib/language';
+import { fetchChapter } from '@/src/services/bibleApi';
 
 interface DailyVerseEntry {
   id: string;
@@ -21,8 +23,15 @@ export interface DailyVerseSelection {
   label: string;
 }
 
-const DAILY_VERSE_HISTORY_KEY = 'biblia-nj-startup-verse-history';
-const RECENT_VERSE_MEMORY = 4;
+const DAILY_VERSE_CACHE_PREFIX = 'biblia-nj-daily-verse-cache';
+
+const DAILY_CHAPTER_POOL = FALLBACK_BIBLE_BOOKS.flatMap((book) => Array.from(
+  { length: book.chapters },
+  (_, index) => ({
+    book,
+    chapter: index + 1,
+  }),
+));
 
 function mapDailyVerseEntry(entry: DailyVerseEntry, language: AppLanguage): DailyVerseSelection {
   return {
@@ -38,61 +47,102 @@ function mapDailyVerseEntry(entry: DailyVerseEntry, language: AppLanguage): Dail
   };
 }
 
-function readRecentVerseIds() {
+function getDailyVerseCacheKey(language: AppLanguage) {
+  return `${DAILY_VERSE_CACHE_PREFIX}:${getLocalDateKey()}:${language}`;
+}
+
+function isDailyVerseSelection(value: unknown): value is DailyVerseSelection {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<DailyVerseSelection> & { verse?: Partial<Verse> };
+  return typeof candidate.id === 'string'
+    && typeof candidate.bookAbrev === 'string'
+    && typeof candidate.chapter === 'number'
+    && typeof candidate.label === 'string'
+    && !!candidate.verse
+    && typeof candidate.verse.number === 'number'
+    && typeof candidate.verse.verse === 'string';
+}
+
+function readCachedDailyVerse(language: AppLanguage) {
   if (typeof window === 'undefined') {
-    return [] as string[];
+    return null;
   }
 
   try {
-    const rawHistory = window.localStorage.getItem(DAILY_VERSE_HISTORY_KEY);
-    if (!rawHistory) {
-      return [];
+    const rawValue = window.localStorage.getItem(getDailyVerseCacheKey(language));
+    if (!rawValue) {
+      return null;
     }
 
-    const parsedHistory = JSON.parse(rawHistory);
-    if (!Array.isArray(parsedHistory)) {
-      return [];
+    const parsedValue = JSON.parse(rawValue);
+    if (!isDailyVerseSelection(parsedValue)) {
+      return null;
     }
 
-    return parsedHistory.filter((value): value is string => typeof value === 'string');
+    return parsedValue;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function writeRecentVerseIds(nextHistory: string[]) {
+function writeCachedDailyVerse(language: AppLanguage, selection: DailyVerseSelection) {
   if (typeof window === 'undefined') {
     return;
   }
 
   try {
-    window.localStorage.setItem(DAILY_VERSE_HISTORY_KEY, JSON.stringify(nextHistory));
+    window.localStorage.setItem(getDailyVerseCacheKey(language), JSON.stringify(selection));
   } catch {
-    // Ignore storage failures and fall back to in-memory randomness.
+    // Ignore storage failures and fall back to the bundled verse list.
   }
 }
 
-export function getRandomVerseId() {
-  const recentVerseIds = readRecentVerseIds();
-  const visibleHistory = recentVerseIds.slice(0, Math.min(RECENT_VERSE_MEMORY, Math.max(1, DAILY_VERSES.length - 1)));
-  const availableVerses = DAILY_VERSES.filter((entry) => !visibleHistory.includes(entry.id));
-  const selectionPool = availableVerses.length > 0
-    ? availableVerses
-    : DAILY_VERSES.filter((entry) => entry.id !== recentVerseIds[0]);
-  const finalPool = selectionPool.length > 0 ? selectionPool : DAILY_VERSES;
-  const randomIndex = Math.floor(Math.random() * finalPool.length);
-  const selectedVerseId = finalPool[randomIndex]?.id ?? DAILY_VERSES[0].id;
-  const nextHistory = [selectedVerseId, ...recentVerseIds.filter((id) => id !== selectedVerseId)]
-    .slice(0, Math.min(RECENT_VERSE_MEMORY, DAILY_VERSES.length));
+function getBundledDailyVerse(language: AppLanguage): DailyVerseSelection {
+  const dateKey = getLocalDateKey();
+  const entry = DAILY_VERSES[getDeterministicIndex(DAILY_VERSES.length, `${dateKey}-bundled-daily-verse`)];
 
-  writeRecentVerseIds(nextHistory);
-
-  return selectedVerseId;
+  return mapDailyVerseEntry(entry, language);
 }
 
-export function getVerseById(id: string, language: AppLanguage): DailyVerseSelection {
-  const entry = DAILY_VERSES.find((candidate) => candidate.id === id) ?? DAILY_VERSES[0];
-  return mapDailyVerseEntry(entry, language);
+function buildDailyVerseLabel(bookName: string, chapter: number, verseNumber: number) {
+  return `${bookName} ${chapter}:${verseNumber}`;
+}
+
+async function resolveWholeBibleDailyVerse(language: AppLanguage): Promise<DailyVerseSelection> {
+  const dateKey = getLocalDateKey();
+  const chapterEntry = DAILY_CHAPTER_POOL[
+    getDeterministicIndex(DAILY_CHAPTER_POOL.length, `${dateKey}-whole-bible-daily-chapter`)
+  ];
+
+  if (!chapterEntry) {
+    return getBundledDailyVerse(language);
+  }
+
+  const chapterData = await fetchChapter(chapterEntry.book.names[0], chapterEntry.chapter, language);
+  const availableVerses = chapterData.vers.filter((verse) => verse.number > 0 && verse.verse.trim().length > 0);
+  const selectedVerse = availableVerses[
+    getDeterministicIndex(availableVerses.length, `${dateKey}-${chapterEntry.book.abrev}-${chapterEntry.chapter}-whole-bible-daily-verse`)
+  ] ?? availableVerses[0];
+
+  if (!selectedVerse) {
+    return getBundledDailyVerse(language);
+  }
+
+  return {
+    id: `daily-${dateKey}-${chapterEntry.book.abrev}-${chapterEntry.chapter}-${selectedVerse.number}`,
+    bookAbrev: chapterEntry.book.abrev,
+    chapter: chapterEntry.chapter,
+    label: buildDailyVerseLabel(chapterData.name, chapterEntry.chapter, selectedVerse.number),
+    verse: {
+      id: selectedVerse.id,
+      number: selectedVerse.number,
+      study: selectedVerse.study,
+      verse: selectedVerse.verse,
+    },
+  };
 }
 
 const DAILY_VERSES: DailyVerseEntry[] = [
@@ -179,8 +229,20 @@ const DAILY_VERSES: DailyVerseEntry[] = [
 ];
 
 export function getDailyVerse(language: AppLanguage): DailyVerseSelection {
-  const dateKey = getLocalDateKey();
-  const entry = DAILY_VERSES[getDeterministicIndex(DAILY_VERSES.length, `${dateKey}-${language}-daily-verse`)];
+  return readCachedDailyVerse(language) ?? getBundledDailyVerse(language);
+}
 
-  return mapDailyVerseEntry(entry, language);
+export async function hydrateDailyVerse(language: AppLanguage): Promise<DailyVerseSelection> {
+  const cachedVerse = readCachedDailyVerse(language);
+  if (cachedVerse) {
+    return cachedVerse;
+  }
+
+  try {
+    const selection = await resolveWholeBibleDailyVerse(language);
+    writeCachedDailyVerse(language, selection);
+    return selection;
+  } catch {
+    return getBundledDailyVerse(language);
+  }
 }

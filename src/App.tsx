@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Suspense, useEffect, useEffectEvent, useMemo, useState } from 'react';
+import { Suspense, useEffect, useEffectEvent, useState } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Sidebar } from '@/src/components/Sidebar';
@@ -30,7 +30,7 @@ import { useReadingChallenges } from '@/src/hooks/useReadingChallenges';
 import { dismissAppUpdateVersion, fetchLatestAppUpdate, getAppUpdateTargetUrl, getCurrentAppVersion, getDismissedAppUpdateVersion, shouldPromptForAppUpdate, type AppUpdateManifest } from '@/src/lib/appUpdate';
 import { getBackendStatusSnapshot, getBackendWarmupDescription, getBackendWarmupTitle, subscribeBackendStatus, type BackendStatusSnapshot, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
 import { getAppShareUrl, shareContent, shareInstalledAndroidApp, type SharePayload } from '@/src/lib/share';
-import { getRandomVerseId, getVerseById } from '@/src/lib/dailyVerse';
+import { getDailyVerse, hydrateDailyVerse } from '@/src/lib/dailyVerse';
 import { Loader2 } from 'lucide-react';
 
 function normalizeBookKey(value: string) {
@@ -119,9 +119,8 @@ export default function App() {
     text: '',
     url: '',
   });
-  const [startupVerseId] = useState(() => getRandomVerseId());
+  const [startupVerse, setStartupVerse] = useState(() => getDailyVerse(currentLang));
   const [backendStatus, setBackendStatus] = useState<BackendStatusSnapshot>(() => getBackendStatusSnapshot());
-  const startupVerse = useMemo(() => getVerseById(startupVerseId, currentLang), [currentLang, startupVerseId]);
   const {
     isDarkMode,
     setIsDarkMode,
@@ -299,6 +298,22 @@ export default function App() {
     navigateToMainView('reader');
     setSelectedVerse(null);
   };
+
+  useEffect(() => {
+    let isDisposed = false;
+
+    setStartupVerse(getDailyVerse(currentLang));
+
+    void hydrateDailyVerse(currentLang).then((dailyVerse) => {
+      if (!isDisposed) {
+        setStartupVerse(dailyVerse);
+      }
+    });
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [currentLang]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
