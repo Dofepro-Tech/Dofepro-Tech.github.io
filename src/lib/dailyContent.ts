@@ -1,4 +1,5 @@
 import { getDeterministicIndex, getLocalDateKey } from '@/src/lib/challenges';
+import { generateVerseImage } from '@/src/lib/verseImageGenerator';
 
 export interface DailyVerseReference {
   bookAbrev: string;
@@ -562,13 +563,59 @@ const TESTIMONIES: LocalizedDailyResourceCard[] = [
 ];
 
 export function getDailyContent(language: 'es' | 'en', dateKey: string = getLocalDateKey()) {
+  // Evitar repetición inmediata: excluye el recurso mostrado ayer
+  function excludeYesterday(cards: any[], kind: string) {
+    const yesterday = (() => {
+      const d = new Date(dateKey);
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    const yesterdaySeed = `${yesterday}-${kind}`;
+    const yesterdayIndex = cards.length > 1 ? getDeterministicIndex(cards.length, yesterdaySeed) : 0;
+    return cards.length > 1 ? cards.filter((_, i) => i !== yesterdayIndex) : cards;
+  }
 
   const reflections = buildLocalizedRotation(REFLECTIONS, language, `${dateKey}-reflection`);
-  const images = buildLocalizedRotation(IMAGE_CARDS, language, `${dateKey}-image`);
+  // Selección de imágenes: evita repetir versículos en el mismo día
+  function selectUniqueVerseCards(cards: DailyResourceCard[], limit = 4) {
+    const seen = new Set<string>();
+    const result: DailyResourceCard[] = [];
+    for (const card of cards) {
+      const verseKey = card.verseReference ? `${card.verseReference.bookAbrev}-${card.verseReference.chapter}-${card.verseReference.verseNumber}` : card.id;
+      if (!seen.has(verseKey)) {
+        seen.add(verseKey);
+        result.push(card);
+      }
+      if (result.length >= limit) break;
+    }
+    return result.length > 0 ? result : cards.slice(0, limit);
+  }
+
+  // Genera imágenes automáticamente para cada tarjeta de imagen del día
+  async function buildImagesWithGeneratedUrls(cards: DailyResourceCard[]) {
+    return await Promise.all(cards.map(async (card) => {
+      const verse = card.verseReference;
+      if (!verse) return card;
+      const verseText = card.quote || card.body;
+      const verseRef = verse.labelEs || verse.labelEn || `${verse.bookAbrev} ${verse.chapter}:${verse.verseNumber}`;
+      const imageUrl = await generateVerseImage(verseText, verseRef);
+      return { ...card, imageUrl };
+    }));
+  }
+  // Uso: en hooks o componentes React, llamar buildImagesWithGeneratedUrls(imagesRaw)
+  const imagesRaw = selectUniqueVerseCards(
+    excludeYesterday(buildLocalizedRotation(IMAGE_CARDS, language, `${dateKey}-image`), 'image')
+  );
+  // Para apps React, se recomienda usar un hook que resuelva las promesas y setee el estado
   const sermons = buildLocalizedRotation(SERMONS, language, `${dateKey}-sermon`);
   const newsItems = buildLocalizedRotation(NEWS_CARDS, language, `${dateKey}-news`);
-  const videos = buildLocalizedRotation(VIDEO_CARDS, language, `${dateKey}-video`);
+  const videos = selectUniqueVerseCards(
+    excludeYesterday(buildLocalizedRotation(VIDEO_CARDS, language, `${dateKey}-video`), 'video')
+  );
   const testimonies = buildLocalizedRotation(TESTIMONIES, language, `${dateKey}-testimony`);
+
+  // Definir images correctamente
+  const images = imagesRaw;
 
   return {
     reflection: reflections[0],

@@ -1,3 +1,5 @@
+// Clave API para Gemini (rellena con tu clave real o usa variable de entorno)
+export const GEMINI_API_KEY = '';
 function sanitizeBaseUrl(value: string) {
   return value.replace(/\/+$/, '');
 }

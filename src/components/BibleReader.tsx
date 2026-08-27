@@ -40,6 +40,7 @@ interface BibleReaderProps {
   onOpenFavorites?: () => void;
   onNavigateToVerse?: (bookAbrev: string, chapter: number, verseNumber: number) => void;
   onOpenDailyExperience?: () => void;
+  isRightSidebarOpen?: boolean;
   onTrackSearchQuery?: (query: string) => void;
   challengeSummary: ReadingChallengeSummary;
   onGoBack?: () => void;
@@ -107,6 +108,7 @@ export function BibleReader({
   onOpenSearch,
   onOpenPlans,
   onOpenUser,
+  isRightSidebarOpen,
   readerSelectorRequestId,
   verseFocusRequestId,
   onShareContent,
@@ -775,15 +777,46 @@ export function BibleReader({
       const verseTopInContainer = mainScrollRef.current.scrollTop + (verseRect.top - containerRect.top);
       const targetTop = verseTopInContainer - topOffset - ((visibleHeight - verseRect.height) / 2);
 
+      // Primary scroll attempt using container coordinates
       mainScrollRef.current.scrollTo({
         top: Math.max(targetTop, 0),
         behavior,
       });
+
+      // Backup re-center after layout/animations settle
+      // This helps when a header, action sheet or right sidebar cause reflow after the first scroll
+      window.setTimeout(() => {
+        try {
+          // Best-effort center in viewport
+          verseEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+
+          // Fine-tune using visible area accounting for header/action-sheet sizes
+          const newRect = verseEl.getBoundingClientRect();
+          const headerBottom = mobileHeaderRef.current?.getBoundingClientRect().bottom ?? containerRect.top;
+          const actionTop = mobileActionSheetRef.current?.getBoundingClientRect().top ?? containerRect.bottom;
+          const availableHeight = Math.max(containerRect.bottom - headerBottom - (containerRect.bottom - actionTop), verseRect.height);
+          const desiredCenter = headerBottom + (availableHeight / 2);
+          const delta = (newRect.top + newRect.height / 2) - desiredCenter;
+
+          if (Math.abs(delta) > 6) {
+            mainScrollRef.current.scrollTo({ top: Math.max(mainScrollRef.current.scrollTop + delta, 0), behavior: 'auto' });
+          }
+        } catch (e) {
+          // ignore any errors during the fallback
+        }
+      }, 120);
     } else {
       verseEl.scrollIntoView({ behavior, block: 'center' });
     }
 
     verseEl.focus({ preventScroll: true });
+    // briefly mark the verse as blinking so the user can spot it after navigation
+    try {
+      setBlinkingVerseId(verseNumber);
+      window.setTimeout(() => setBlinkingVerseId(null), 1200);
+    } catch {
+      // ignore in environments without window or timers
+    }
     return true;
   };
 
@@ -1002,6 +1035,19 @@ export function BibleReader({
     clearScheduledVerseFocus();
     return undefined;
   }, [chapterData?.chapter, isMobileViewport, selectedVerse?.id, selectedVerse?.number, verseFocusRequestId]);
+
+  // Re-focus the selected verse after the right sidebar opens/closes (layout may reflow)
+  useEffect(() => {
+    if (typeof isRightSidebarOpen === 'undefined') return;
+    if (!selectedVerse) return;
+    // small delay to wait for sidebar animation/layout changes
+    const delay = isMobileViewport ? 320 : 520;
+    const timer = window.setTimeout(() => {
+      requestVerseFocus(selectedVerse.number, 0);
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [isRightSidebarOpen, isMobileViewport, selectedVerse?.number]);
 
   useEffect(() => {
     if (selectedVerse && versesScrollRef.current) {

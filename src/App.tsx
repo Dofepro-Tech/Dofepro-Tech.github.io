@@ -119,7 +119,18 @@ export default function App() {
     text: '',
     url: '',
   });
-  const [startupVerse, setStartupVerse] = useState(() => getRandomStartupVerse(currentLang));
+  // Versículo diario persistente por fecha
+  const [startupVerse, setStartupVerse] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const cached = window.localStorage.getItem('biblia-nj-daily-verse-cache:' + new Date().toISOString().slice(0, 10) + ':' + currentLang);
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch {}
+      }
+    }
+    return getRandomStartupVerse(currentLang);
+  });
   const [backendStatus, setBackendStatus] = useState<BackendStatusSnapshot>(() => getBackendStatusSnapshot());
   const {
     isDarkMode,
@@ -341,14 +352,8 @@ export default function App() {
     }
   }, [hasCompletedBootstrap, hasMinimumSplashTimePassed]);
 
-  useEffect(() => {
-    if (isBootSplashVisible || !hasCompletedBootstrap || !hasMinimumSplashTimePassed || hasShownStartupDailyVerse) {
-      return;
-    }
 
-    setIsDailyExperienceOpen(true);
-    setHasShownStartupDailyVerse(true);
-  }, [isBootSplashVisible, hasCompletedBootstrap, hasMinimumSplashTimePassed, hasShownStartupDailyVerse]);
+  // Eliminado: apertura automática del desafío diario al iniciar la app
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -651,6 +656,7 @@ export default function App() {
     openReaderLocation(book, bookmark.chapter, bookmark.verseNumber || null);
   };
 
+  // Navega y enfoca el versículo solicitado desde cualquier parte de la app
   const handleNavigateToVerse = (bookAbrev: string, chapter: number, verseNumber: number) => {
     const book = findBookByAbrev(bookAbrev);
     if (!book) {
@@ -662,8 +668,19 @@ export default function App() {
       setIsDailyExperienceOpen(false);
       return;
     }
-
-    openReaderLocation(book, chapter, verseNumber);
+    setSelectedBook(book);
+    setSelectedChapter(chapter);
+    setSelectedVerse({
+      id: verseNumber,
+      number: verseNumber,
+      verse: '', // El texto se cargará en BibleReader
+    });
+    setPendingVerseNumber(verseNumber);
+    setVerseFocusRequestId((current) => current + 1);
+    navigateToMainView('reader');
+    setIsSidebarOpen(false);
+    setIsRightSidebarOpen(false);
+    setIsDailyExperienceOpen(false);
   };
 
   const handleGoHome = () => {
@@ -853,7 +870,6 @@ export default function App() {
             } : null}
             onOpenAppUpdate={() => { void handleOpenAppUpdate(); }}
             onDismissAppUpdate={handleDismissAppUpdate}
-            dailyVerse={startupVerse}
           />
         ) : mainView === 'game' ? (
           <Suspense fallback={null}>
@@ -914,6 +930,7 @@ export default function App() {
             onSelectVerse={handleSelectVerse}
             onMenuClick={() => openSidebar('all')}
             isSidebarOpen={isSidebarOpen}
+            isRightSidebarOpen={isRightSidebarOpen}
             books={books}
             selectedBook={selectedBook}
             selectedChapter={selectedChapter}

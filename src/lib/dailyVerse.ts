@@ -1,5 +1,6 @@
 import type { Verse } from '@/src/types';
 import { getDeterministicIndex, getLocalDateKey } from '@/src/lib/challenges';
+import { generateVerseImage } from '@/src/lib/verseImageGenerator';
 import { FALLBACK_BIBLE_BOOKS } from '@/src/lib/fallbackBooks';
 import type { AppLanguage } from '@/src/lib/language';
 import { fetchChapter } from '@/src/services/bibleApi';
@@ -73,16 +74,19 @@ function mapResolvedVerseSelection(bookName: string, bookAbrev: string, chapter:
   };
 }
 
+
+
+    // Versión recomendada: asíncrona, genera imagen automáticamente
 function getDailyVerseCacheKey(language: AppLanguage) {
   return `${DAILY_VERSE_CACHE_PREFIX}:${getLocalDateKey()}:${language}`;
 }
 
-function isDailyVerseSelection(value: unknown): value is DailyVerseSelection {
+function isDailyVerseSelection(value: unknown): value is DailyVerseSelection & { imageUrl?: string } {
   if (!value || typeof value !== 'object') {
     return false;
   }
 
-  const candidate = value as Partial<DailyVerseSelection> & { verse?: Partial<Verse> };
+  const candidate = value as Partial<DailyVerseSelection> & { verse?: Partial<Verse>; imageUrl?: string };
   return typeof candidate.id === 'string'
     && typeof candidate.bookAbrev === 'string'
     && typeof candidate.chapter === 'number'
@@ -92,7 +96,7 @@ function isDailyVerseSelection(value: unknown): value is DailyVerseSelection {
     && typeof candidate.verse.verse === 'string';
 }
 
-function readCachedDailyVerse(language: AppLanguage) {
+function readCachedDailyVerse(language: AppLanguage): (DailyVerseSelection & { imageUrl?: string }) | null {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -332,9 +336,17 @@ const DAILY_VERSES: DailyVerseEntry[] = [
     textEn: 'Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the Lord thy God is with thee whithersoever thou goest.',
   },
 ];
-
-export function getDailyVerse(language: AppLanguage): DailyVerseSelection {
-  return readCachedDailyVerse(language) ?? getBundledDailyVerse(language);
+// Versión recomendada: asíncrona, genera imagen automáticamente
+export async function getDailyVerseWithImage(language: AppLanguage): Promise<DailyVerseSelection & { imageUrl: string }> {
+  const cached = readCachedDailyVerse(language);
+  if (cached && cached.imageUrl) return cached as any;
+  const base = getBundledDailyVerse(language);
+  const verseText = base.verse.verse;
+  const verseRef = base.label;
+  const imageUrl = await generateVerseImage(verseText, verseRef);
+  const result = { ...base, imageUrl };
+  writeCachedDailyVerse(language, result);
+  return result;
 }
 
 export function getRandomStartupVerse(language: AppLanguage): DailyVerseSelection {

@@ -456,7 +456,7 @@ if (existsSync(distIndexPath)) {
   });
 }
 
-const port = Number(process.env.PORT) || 3001;
+const port = Number(process.env.PORT) || 3002;
 app.listen(port, () => {
   console.log(`Bible NJ API listening on http://localhost:${port}`);
 });

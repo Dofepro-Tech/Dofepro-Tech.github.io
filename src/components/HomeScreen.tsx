@@ -77,142 +77,174 @@ interface HomeScreenProps {
   } | null;
   onOpenAppUpdate?: () => void;
   onDismissAppUpdate?: () => void;
-  dailyVerse: {
-    id: string;
-    bookAbrev: string;
-    chapter: number;
-    verse: Verse;
-    label: string;
-  };
 }
+export function HomeScreen(props: HomeScreenProps) {
+  const {
+    books,
+    selectedBook,
+    selectedChapter,
+    bookmarksCount,
+    challengeSummary,
+    isDarkMode,
+    onToggleDarkMode,
+    fontSize,
+    setFontSize,
+    accentColor,
+    setAccentColor,
+    voiceURI,
+    setVoiceURI,
+    onShare,
+    onMenuClick,
+    onOpenBooks,
+    onContinueReading,
+    onOpenReaderSelector,
+    onOpenStudy,
+    onOpenDailyExperience,
+    onOpenFavorites,
+    onOpenGame,
+    onOpenSearch,
+    onOpenPlans,
+    onOpenUser,
+    onGoHome,
+    onOpenVerse,
+    onShareContent,
+    availableAppUpdate,
+    onOpenAppUpdate,
+    onDismissAppUpdate,
+  } = props;
 
-export function HomeScreen({
-  books,
-  selectedBook,
-  selectedChapter,
-  bookmarksCount,
-  challengeSummary,
-  isDarkMode,
-  onToggleDarkMode,
-  fontSize,
-  setFontSize,
-  accentColor,
-  setAccentColor,
-  voiceURI,
-  setVoiceURI,
-  onShare,
-  onMenuClick,
-  onOpenBooks,
-  onContinueReading,
-  onOpenReaderSelector,
-  onOpenStudy,
-  onOpenDailyExperience,
-  onOpenFavorites,
-  onOpenGame,
-  onOpenSearch,
-  onOpenPlans,
-  onOpenUser,
-  onGoHome,
-  onOpenVerse,
-  onShareContent,
-  availableAppUpdate,
-  onOpenAppUpdate,
-  onDismissAppUpdate,
-  dailyVerse,
-}: HomeScreenProps) {
-  const { t, i18n } = useTranslation();
-  const [openMobileDevotionalId, setOpenMobileDevotionalId] = useState<'reflection' | 'passage' | 'prayer'>('reflection');
-  const [isImageShareSheetOpen, setIsImageShareSheetOpen] = useState(false);
-  const [isPreparingImageShare, setIsPreparingImageShare] = useState(false);
-  const [sharedImageAsset, setSharedImageAsset] = useState<VerseImageAsset | null>(null);
-  const [sharedImageTitle, setSharedImageTitle] = useState('');
-  const [sharedImageText, setSharedImageText] = useState('');
-  const [imageSheetMode, setImageSheetMode] = useState<'preview' | 'share'>('share');
-  const [savedDailyImageIds, setSavedDailyImageIds] = useState<string[]>(() => readStoredSavedDailyImages());
-  const [activeImageResourceId, setActiveImageResourceId] = useState<string | null>(null);
-  const [isMobileViewport, setIsMobileViewport] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 1024));
-  const [isMobileDeferredContentReady, setIsMobileDeferredContentReady] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 1024));
-  const currentLanguage = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
-  const oldTestamentCount = books.filter((book) => {
-    const testament = book.testament.toLowerCase();
-    return testament.includes('antiguo') || testament.includes('old');
-  }).length;
-  const newTestamentCount = books.length - oldTestamentCount;
-  const resumeLabel = selectedBook ? `${selectedBook.names[0]} ${selectedChapter}` : t('menu.books');
-  const dailyContent = useDailyContent(currentLanguage);
-  const imageItem = dailyContent.image;
-  const appShareUrl = getAppShareUrl();
-  const dailyVerseShareUrl = getReaderShareUrl({
-    bookAbrev: dailyVerse.bookAbrev,
-    chapter: dailyVerse.chapter,
-    verseNumber: dailyVerse.verse.number,
-  });
-  const pageTone = isDarkMode
-    ? 'bg-[#04101f] text-white'
-    : 'bg-[linear-gradient(180deg,#eef5ff_0%,#f7fbff_44%,#f5f5f0_100%)] text-[#102542]';
-  const headerTone = isDarkMode
-    ? 'border-white/10 bg-[#07172e]/92'
-    : 'border-[#cfe0f2] bg-white/92';
-  const headerButtonTone = isDarkMode
-    ? 'border-white/10 bg-white/5 text-white hover:border-[#4fa8ff]/40 hover:bg-[#10284f]'
-    : 'border-[#d4e2f1] bg-white text-[#153153] hover:border-[#4fa8ff]/35 hover:bg-[#edf5ff]';
-  const headerBadgeTone = isDarkMode ? 'text-[#87bfff]' : 'text-[#4d7bb3]';
-  const headerTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
-  const footerHintTone = isDarkMode ? 'text-[#8fb6de]' : 'text-[#587392]';
-  const desktopSectionTone = isDarkMode
-    ? 'border-white/10 bg-[#07162b] text-white shadow-[0_18px_60px_rgba(0,0,0,0.22)]'
-    : 'border-[#d8e6f4] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbff_100%)] text-[#102542] shadow-[0_18px_50px_rgba(36,74,116,0.12)]';
-  const desktopSectionBadgeTone = isDarkMode ? 'text-[#7fb8ff]' : 'text-[#4d7bb3]';
-  const desktopSectionTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
-  const desktopSectionBodyTone = isDarkMode ? 'text-[#cfe2ff]' : 'text-[#4f6988]';
-  const desktopChipTone = isDarkMode
-    ? 'border-white/10 bg-white/5 text-[#d6e9ff]'
-    : 'border-[#d4e2f1] bg-[#f2f8ff] text-[#153153]';
-  const mobileCopy = currentLanguage === 'en'
-    ? {
-        devotional: 'Today\'s devotion',
-        listen: 'Listen',
-        read: 'Read',
-        passage: 'Passage of the day',
-        prayer: 'Prayer of the day',
-        images: 'Images of the day',
-        sermons: 'Sermons of the day',
-        news: 'News of today',
-        videos: 'Videos of the day',
-        reflections: 'Reflections of the day',
-        testimonies: 'Testimonies of the day',
-        versesSection: 'Verse of the day',
-        minRead: '4 min',
-        chapterTab: 'Chapter',
-        verseTab: 'Verse',
+    const { t, i18n } = useTranslation();
+    const [savedDailyImageIds, setSavedDailyImageIds] = useState<string[]>(() => readStoredSavedDailyImages());
+    const [activeImageResourceId, setActiveImageResourceId] = useState<string | null>(null);
+    const [isMobileViewport, setIsMobileViewport] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 1024));
+    const [isMobileDeferredContentReady, setIsMobileDeferredContentReady] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 1024));
+    const [dailyVerse, setDailyVerse] = useState<any>(null);
+    const [loadingDaily, setLoadingDaily] = useState(true);
+    const [dailyImage, setDailyImage] = useState<string | null>(null);
+    const [sharedImageAsset, setSharedImageAsset] = useState<any>(null);
+    const [sharedImageTitle, setSharedImageTitle] = useState<string>('');
+    const [sharedImageText, setSharedImageText] = useState<string>('');
+    const [openMobileDevotionalId, setOpenMobileDevotionalId] = useState<'reflection' | 'passage' | 'prayer'>('reflection');
+    const [isImageShareSheetOpen, setIsImageShareSheetOpen] = useState(false);
+    const [imageSheetMode, setImageSheetMode] = useState<'preview' | 'share'>('preview');
+    const [isPreparingImageShare, setIsPreparingImageShare] = useState(false);
+    const currentLanguage = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
+    const oldTestamentCount = books.filter((book) => {
+      const testament = book.testament.toLowerCase();
+      return testament.includes('antiguo') || testament.includes('old');
+    }).length;
+    const newTestamentCount = books.length - oldTestamentCount;
+    const resumeLabel = selectedBook
+      ? `${selectedBook.names[0]} ${selectedChapter}`
+      : t('home.open_books_detail');
+    const dailyContent = useDailyContent(currentLanguage);
+    const imageItem = dailyContent.image;
+    const appShareUrl = getAppShareUrl();
+    const preferredDailyVerseNumber = dailyVerse ? (() => {
+      const labelText = String(dailyVerse?.label ?? '');
+      const match = labelText.match(/:(\d+)/);
+      if (match) return parseInt(match[1], 10);
+      return dailyVerse?.verse?.number;
+    })() : undefined;
+
+    const dailyVerseShareUrl = dailyVerse ? getReaderShareUrl({
+      bookAbrev: dailyVerse.bookAbrev,
+      chapter: dailyVerse.chapter,
+      verseNumber: preferredDailyVerseNumber ?? dailyVerse.verse.number,
+    }) : '';
+    const pageTone = isDarkMode
+      ? 'bg-[#04101f] text-white'
+      : 'bg-[linear-gradient(180deg,#eef5ff_0%,#f7fbff_44%,#f5f5f0_100%)] text-[#102542]';
+    const headerTone = isDarkMode
+      ? 'border-white/10 bg-[#07172e]/92'
+      : 'border-[#cfe0f2] bg-white/92';
+    const headerButtonTone = isDarkMode
+      ? 'border-white/10 bg-white/5 text-white hover:border-[#4fa8ff]/40 hover:bg-[#10284f]'
+      : 'border-[#d4e2f1] bg-white text-[#153153] hover:border-[#4fa8ff]/35 hover:bg-[#edf5ff]';
+    const headerBadgeTone = isDarkMode ? 'text-[#87bfff]' : 'text-[#4d7bb3]';
+    const headerTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
+    const footerHintTone = isDarkMode ? 'text-[#8fb6de]' : 'text-[#587392]';
+    const desktopSectionTone = isDarkMode
+      ? 'border-white/10 bg-[#07162b] text-white shadow-[0_18px_60px_rgba(0,0,0,0.22)]'
+      : 'border-[#d8e6f4] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbff_100%)] text-[#102542] shadow-[0_18px_50px_rgba(36,74,116,0.12)]';
+    const desktopSectionBadgeTone = isDarkMode ? 'text-[#7fb8ff]' : 'text-[#4d7bb3]';
+    const desktopSectionTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
+    const desktopSectionBodyTone = isDarkMode ? 'text-[#cfe2ff]' : 'text-[#4f6988]';
+    const desktopChipTone = isDarkMode
+      ? 'border-white/10 bg-white/5 text-[#d6e9ff]'
+      : 'border-[#d4e2f1] bg-[#f2f8ff] text-[#153153]';
+    const mobileCopy = currentLanguage === 'en'
+      ? {
+          devotional: 'Today\'s devotion',
+          listen: 'Listen',
+          read: 'Read',
+          passage: 'Passage of the day',
+          prayer: 'Prayer of the day',
+          images: 'Images of the day',
+          sermons: 'Sermons of the day',
+          news: 'News of today',
+          videos: 'Videos of the day',
+          reflections: 'Reflections of the day',
+          testimonies: 'Testimonies of the day',
+          versesSection: 'Verse of the day',
+          minRead: '4 min',
+          chapterTab: 'Chapter',
+          verseTab: 'Verse',
+        }
+      : {
+          devotional: 'Devocional de hoy',
+          listen: 'Escuchar',
+          read: 'Leer',
+          passage: 'Pasaje del día',
+          prayer: 'Oración del día',
+          images: 'Imágenes del día',
+          sermons: 'Prédicas del día',
+          news: 'Noticias de hoy',
+          videos: 'Videos del día',
+          reflections: 'Reflexiones del día',
+          testimonies: 'Testimonios de día',
+          versesSection: 'Versículo del día',
+          minRead: '4 min',
+          chapterTab: 'Capítulo',
+          verseTab: 'Versículo',
+        };
+    const companionSections = dailyContent.sections.map((section) => ({
+        ...section,
+        title: getDailyCompanionSectionTitle(section.kind, mobileCopy),
+        label: getDailyCompanionLabel(section.kind, t),
+      }));
+    const visibleMobileCompanionSections = isMobileDeferredContentReady
+      ? companionSections
+      : companionSections.slice(0, 2);
+    const canListenReflection = canUseSpeechSynthesis();
+    const verseReferenceLabel = dailyVerse ? dailyVerse.label : '';
+
+    // Cargar versículo e imagen diarios de forma asíncrona
+    useEffect(() => {
+      let mounted = true;
+      async function loadDaily() {
+        setLoadingDaily(true);
+        try {
+          const { getDailyVerseWithImage } = await import('@/src/lib/dailyVerse');
+          const result = await getDailyVerseWithImage(currentLanguage);
+          if (mounted) {
+            // Soporta ambos formatos: result.dailyVerse o el objeto directo
+            setDailyVerse(result);
+            setDailyImage(result.imageUrl || null);
+          }
+        } catch (e) {
+          if (mounted) {
+            setDailyVerse(null);
+            setDailyImage(null);
+          }
+        } finally {
+          if (mounted) setLoadingDaily(false);
+        }
       }
-    : {
-        devotional: 'Devocional de hoy',
-        listen: 'Escuchar',
-        read: 'Leer',
-        passage: 'Pasaje del día',
-        prayer: 'Oración del día',
-        images: 'Imágenes del día',
-        sermons: 'Prédicas del día',
-        news: 'Noticias de hoy',
-        videos: 'Videos del día',
-        reflections: 'Reflexiones del día',
-        testimonies: 'Testimonios del día',
-        versesSection: 'Versículo del día',
-        minRead: '4 min',
-        chapterTab: 'Capítulo',
-        verseTab: 'Versículo',
-      };
-  const companionSections = dailyContent.sections.map((section) => ({
-      ...section,
-      title: getDailyCompanionSectionTitle(section.kind, mobileCopy),
-      label: getDailyCompanionLabel(section.kind, t),
-    }));
-  const visibleMobileCompanionSections = isMobileDeferredContentReady
-    ? companionSections
-    : companionSections.slice(0, 2);
-  const canListenReflection = canUseSpeechSynthesis();
-  const verseReferenceLabel = dailyVerse.label;
+      loadDaily();
+      return () => { mounted = false; };
+    }, [currentLanguage]);
+
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -305,54 +337,26 @@ export function HomeScreen({
       icon: <BookOpen className="h-5 w-5" />,
       onClick: onOpenReaderSelector ?? onContinueReading,
     },
-    {
-      id: 'search',
-      label: t('app.search_book'),
-      icon: <Search className="h-5 w-5" />,
-      onClick: () => onOpenSearch?.(),
-    },
-    {
-      id: 'plans',
-      label: currentLanguage === 'en' ? 'Plans' : 'Planes',
-      icon: <Calendar className="h-5 w-5" />,
-      onClick: () => onOpenPlans?.(),
-    },
-    {
-      id: 'favorites',
-      label: t('menu.favorites'),
-      icon: <Heart className="h-5 w-5" />,
-      onClick: onOpenFavorites,
-    },
-    {
-      id: 'user',
-      label: currentLanguage === 'en' ? 'User' : 'Usuario',
-      icon: <User className="h-5 w-5" />,
-      onClick: () => onOpenUser?.(),
-    },
   ];
 
-  const handleCompanionAction = async (kind: DailyCompanionKind, resource: DailyResourceCard) => {
-    if (kind === 'image') {
-      if (resource.sourceUrl || resource.imageUrl) {
-        await openExternalUrl(resource.sourceUrl ?? resource.imageUrl ?? '');
-        return;
-      }
 
-      if (resource.verseReference) {
-        onOpenVerse(resource.verseReference.bookAbrev, resource.verseReference.chapter, resource.verseReference.verseNumber);
-        return;
-      }
-
-      return;
-    }
-
-    if (resource.sourceUrl) {
-      await openExternalUrl(resource.sourceUrl);
-      return;
-    }
-
+  const handleCompanionAction = (kind: DailyContentKind, resource: DailyResourceCard) => {
     if (resource.verseReference) {
-      onOpenVerse(resource.verseReference.bookAbrev, resource.verseReference.chapter, resource.verseReference.verseNumber);
+      onOpenVerse(
+        resource.verseReference.bookAbrev,
+        resource.verseReference.chapter,
+        resource.verseReference.verseNumber,
+      );
+      return;
+    }
+
+    if (kind === 'reflection') {
+      onOpenDailyExperience();
+      return;
+    }
+
+    if (kind === 'image' && resource.id) {
+      setActiveImageResourceId(resource.id);
       return;
     }
 
@@ -393,10 +397,12 @@ export function HomeScreen({
       icon: <BookOpen className="h-4 w-4" />,
       title: mobileCopy.passage,
       reference: verseReferenceLabel,
-      detail: dailyVerse.label,
-      body: dailyVerse.verse.verse,
+      detail: dailyVerse?.label ?? '',
+      body: dailyVerse?.verse?.verse ?? '',
       primaryLabel: t('app.challenge_open_passage'),
-      primaryAction: () => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, dailyVerse.verse.number),
+      primaryAction: dailyVerse
+        ? () => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, preferredDailyVerseNumber ?? dailyVerse.verse.number)
+        : () => {},
     },
     {
       id: 'prayer' as const,
@@ -613,6 +619,10 @@ export function HomeScreen({
   };
 
   const handleShareDailyVerse = async () => {
+    if (!dailyVerse) {
+      return;
+    }
+
     const shareText = buildVerseShareText({
       reference: dailyVerse.label,
       verseText: dailyVerse.verse.verse,
@@ -760,29 +770,41 @@ export function HomeScreen({
               backgroundPosition: 'center',
             } : undefined : undefined}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#cfe5ff]">{mobileCopy.versesSection}</p>
-                <p className="mt-2 text-sm font-semibold text-white/90">{dailyVerse.label}</p>
+            {loadingDaily ? (
+              <div className="flex items-center justify-center h-32">
+                <span className="text-[#7fb8ff] text-lg font-semibold">Cargando versículo del día...</span>
               </div>
-              <button
-                type="button"
-                onClick={() => { void handleShareDailyVerse(); }}
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-black/20 text-white transition-all hover:bg-black/30"
-                aria-label={t('menu.share')}
-                title={t('menu.share')}
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
-            </div>
+            ) : dailyVerse ? (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#cfe5ff]">{mobileCopy.versesSection}</p>
+                    <p className="mt-2 text-sm font-semibold text-white/90">{dailyVerse.label}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { void handleShareDailyVerse(); }}
+                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-black/20 text-white transition-all hover:bg-black/30"
+                    aria-label={t('menu.share')}
+                    title={t('menu.share')}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, dailyVerse.verse.number)}
-              className="mt-4 max-w-[18rem] text-left font-serif text-[1.35rem] leading-8 text-white transition-opacity hover:opacity-90"
-            >
-              {dailyVerse.verse.verse}
-            </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, preferredDailyVerseNumber ?? dailyVerse.verse.number)}
+                  className="mt-4 max-w-[18rem] text-left font-serif text-[1.35rem] leading-8 text-white transition-opacity hover:opacity-90"
+                >
+                  {dailyVerse.verse.verse}
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-32">
+                <span className="text-[#ff7f7f] text-lg font-semibold">No se pudo cargar el versículo del día</span>
+              </div>
+            )}
           </section>
 
           <section className="mt-4 rounded-[28px] border border-white/10 bg-[#111820] p-4 text-white shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
@@ -1025,7 +1047,7 @@ export function HomeScreen({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className={cn('text-[11px] font-semibold uppercase tracking-[0.32em]', desktopSectionBadgeTone)}>{t('app.verse_for_day')}</p>
-                <h3 className={cn('mt-2 font-serif text-3xl font-bold', desktopSectionTitleTone)}>{dailyVerse.label}</h3>
+                <h3 className={cn('mt-2 font-serif text-3xl font-bold', desktopSectionTitleTone)}>{dailyVerse?.label ?? t('home.loading_verse')}</h3>
               </div>
               <button
                 type="button"
@@ -1039,10 +1061,10 @@ export function HomeScreen({
 
             <button
               type="button"
-              onClick={() => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, dailyVerse.verse.number)}
+              onClick={dailyVerse ? () => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, preferredDailyVerseNumber ?? dailyVerse.verse.number) : undefined}
               className={cn('mt-5 text-left font-serif text-[22px] leading-9 transition-opacity hover:opacity-90', desktopSectionTitleTone)}
             >
-              “{dailyVerse.verse.verse}”
+              “{dailyVerse?.verse?.verse ?? t('home.loading_verse')}”
             </button>
 
             <div className="mt-5 flex flex-wrap gap-3">
