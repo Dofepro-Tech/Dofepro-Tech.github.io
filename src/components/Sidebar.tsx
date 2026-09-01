@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { Book, SidebarBookFilter } from '@/src/types';
 import { cn } from '@/src/lib/utils';
-import { ArrowLeft, Home, BookOpen, Flame, Gamepad2, Heart, Moon, Share2, Sparkles, Sun, X } from 'lucide-react';
+import { Home, BookOpen, Flame, Gamepad2, Heart, Moon, Share2, Sparkles, Sun, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 
@@ -88,7 +88,6 @@ export function Sidebar({
   const heroTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
   const heroDetailTone = isDarkMode ? 'text-white/62' : 'text-[#587392]';
   const sectionTitleTone = isDarkMode ? 'text-[#e0a74b]' : 'text-[#b9851e]';
-  const footerTone = isDarkMode ? 'border-white/10 text-white/35' : 'border-[#d8e4f2] text-[#6f84a0]';
   const titleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
   const subtitleTone = isDarkMode ? 'text-white/72' : 'text-[#587392]';
 
@@ -233,12 +232,6 @@ export function Sidebar({
           ) : null}
 
           <SidebarSection title={menuCopy.navigation} isDarkMode={isDarkMode}>
-            <SidebarActionRow
-              icon={<ArrowLeft className="h-5 w-5" />}
-              label={currentLanguage.startsWith('en') ? 'Back to portfolio' : 'Volver al portafolio'}
-              onClick={() => window.location.assign('https://dofepro-tech.github.io/Mi-Portafolio/')}
-              isDarkMode={isDarkMode}
-            />
             {onGoHome ? (
               <SidebarActionRow icon={<Home className="h-5 w-5" />} label={t('app.home')} onClick={() => runAndClose(onGoHome)} isDarkMode={isDarkMode} />
             ) : null}
@@ -259,10 +252,6 @@ export function Sidebar({
               isDarkMode={isDarkMode}
             />
           </SidebarSection>
-        </div>
-
-        <div className={cn('border-t px-5 py-4', footerTone)}>
-          <p className="text-center text-[10px] font-medium uppercase tracking-[0.22em]">© 2026 Dofepro-Tech</p>
         </div>
       </motion.aside>
     </>

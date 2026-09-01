@@ -85,6 +85,9 @@ export default function App() {
   const currentLang = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
   const currentAppVersion = getCurrentAppVersion();
   const isNativePlatform = typeof window !== 'undefined' && Capacitor.isNativePlatform();
+  const showPortfolioReturn = !isNativePlatform
+    && typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('desde') === 'portafolio';
   const minimumSplashDuration = isNativePlatform ? 520 : 3200;
   const bootstrapFallbackDuration = isNativePlatform ? 2600 : 5600;
 
@@ -807,7 +810,8 @@ export default function App() {
         onGoHome={handleGoHome}
       />
       
-      <main className="flex-1 min-w-0 relative h-full pb-[78px]">
+      <div className="flex min-w-0 flex-1 flex-col">
+      <main className="relative min-h-0 flex-1">
         <AnimatePresence>
           {!isBootSplashVisible && backendStatus.phase === 'waking' && (
             <motion.div
@@ -965,13 +969,14 @@ export default function App() {
             onOpenUser={openUserHub}
             readerSelectorRequestId={readerSelectorRequestId}
             verseFocusRequestId={verseFocusRequestId}
+            showPortfolioReturn={showPortfolioReturn}
             onShareContent={handleShareContent}
             onClearSelectedVerse={() => setSelectedVerse(null)}
           />
         )}
       </main>
 
-      <footer className="fixed inset-x-0 bottom-0 z-[60] flex h-[78px] items-center border-t border-[#d8e4f2] bg-[#f7fbff]/95 px-4 text-[#587392] backdrop-blur-md dark:border-white/10 dark:bg-[#111820]/95 dark:text-white/55">
+      <footer className="flex min-h-12 items-center bg-[#f7fbff] px-4 py-2 text-[#587392] dark:bg-[#111820] dark:text-white/55">
         <div className="mx-auto flex w-full flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-2">
           <span className="text-[10px] font-medium uppercase tracking-[0.16em]">© 2026 Dofepro-Tech</span>
           <span className="hidden sm:inline">•</span>
@@ -990,6 +995,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      </div>
 
       <Suspense fallback={null}>
         <AnimatePresence>

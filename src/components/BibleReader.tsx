@@ -5,7 +5,7 @@ import { PanelNavButtons } from '@/src/components/PanelNavButtons';
 import { MobileBottomNav, MobilePageFooter } from '@/src/components/MobileBottomNav';
 import { fetchChapter, searchBible } from '@/src/services/bibleApi';
 import { getSpeechLanguage } from '@/src/lib/language';
-import { BookOpen, Calendar, Gamepad2, Menu, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, Palette, Trash2, MoreVertical, Heart, Info, Share2, Settings, X, Search, ArrowRight, Bookmark as BookmarkIcon, Globe, Volume2, VolumeX, Copy, House, Flame, Star, User } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, Gamepad2, Menu, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, Palette, Trash2, MoreVertical, Heart, Info, Share2, Settings, X, Search, ArrowRight, Bookmark as BookmarkIcon, Globe, Volume2, VolumeX, Copy, House, Flame, Star, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { canUseSpeechSynthesis, cancelSpeech, getSpeechVoices, setSpeechVoicesChangedListener, speakText } from '@/src/lib/speech';
@@ -51,6 +51,7 @@ interface BibleReaderProps {
   onOpenUser?: () => void;
   readerSelectorRequestId?: number;
   verseFocusRequestId?: number;
+  showPortfolioReturn?: boolean;
   onShareContent: (payload: SharePayload) => void | Promise<void>;
   onClearSelectedVerse?: () => void;
 }
@@ -111,6 +112,7 @@ export function BibleReader({
   isRightSidebarOpen,
   readerSelectorRequestId,
   verseFocusRequestId,
+  showPortfolioReturn = false,
   onShareContent,
   onClearSelectedVerse,
 }: BibleReaderProps) {
@@ -1621,6 +1623,18 @@ export function BibleReader({
                  title={t('app.search_book')}
                >
                  <Search className="w-5 h-5" />
+               </button>
+             )}
+
+             {showPortfolioReturn && !isSearchOpen && (
+               <button
+                 type="button"
+                 onClick={() => window.location.assign('https://dofepro-tech.github.io/Mi-Portafolio/')}
+                 className="p-2 text-olive hover:bg-olive/5 rounded-full transition-all"
+                 title="Volver al portafolio"
+                 aria-label="Volver al portafolio"
+               >
+                 <ArrowLeft className="w-5 h-5" />
                </button>
              )}
 
