@@ -31,7 +31,7 @@ import { dismissAppUpdateVersion, fetchLatestAppUpdate, getAppUpdateTargetUrl, g
 import { getBackendStatusSnapshot, getBackendWarmupDescription, getBackendWarmupTitle, subscribeBackendStatus, type BackendStatusSnapshot, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
 import { getAppShareUrl, shareContent, shareInstalledAndroidApp, type SharePayload } from '@/src/lib/share';
 import { getRandomStartupVerse, hydrateStartupVerse } from '@/src/lib/dailyVerse';
-import { Loader2 } from 'lucide-react';
+import { Github, Globe, Linkedin, Loader2 } from 'lucide-react';
 
 function normalizeBookKey(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -807,7 +807,7 @@ export default function App() {
         onGoHome={handleGoHome}
       />
       
-      <main className="flex-1 min-w-0 relative h-full">
+      <main className="flex-1 min-w-0 relative h-full pb-[78px]">
         <AnimatePresence>
           {!isBootSplashVisible && backendStatus.phase === 'waking' && (
             <motion.div
@@ -970,6 +970,26 @@ export default function App() {
           />
         )}
       </main>
+
+      <footer className="fixed inset-x-0 bottom-0 z-[60] flex h-[78px] items-center border-t border-[#d8e4f2] bg-[#f7fbff]/95 px-4 text-[#587392] backdrop-blur-md dark:border-white/10 dark:bg-[#111820]/95 dark:text-white/55">
+        <div className="mx-auto flex w-full flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-2">
+          <span className="text-[10px] font-medium uppercase tracking-[0.16em]">© 2026 Dofepro-Tech</span>
+          <span className="hidden sm:inline">•</span>
+          <a href="mailto:dofeprotech@gmail.com" className="text-xs hover:text-[#5aa8ff]">dofeprotech@gmail.com</a>
+          <span className="hidden sm:inline">•</span>
+          <div className="flex items-center gap-3">
+            <a href="https://dofepro-tech.github.io/Mi-Portafolio/" aria-label="Portafolio de Dofepro" title="Portafolio de Dofepro" className="hover:text-[#5aa8ff]">
+              <Globe className="h-4 w-4" />
+            </a>
+            <a href="https://github.com/dofepro" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub" className="hover:text-[#5aa8ff]">
+              <Github className="h-4 w-4" />
+            </a>
+            <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn" className="hover:text-[#5aa8ff]">
+              <Linkedin className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </footer>
 
       <Suspense fallback={null}>
         <AnimatePresence>

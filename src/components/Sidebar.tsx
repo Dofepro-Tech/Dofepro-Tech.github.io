@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { Book, SidebarBookFilter } from '@/src/types';
 import { cn } from '@/src/lib/utils';
-import { Home, BookOpen, Flame, Gamepad2, Heart, Moon, Share2, Sparkles, Sun, X } from 'lucide-react';
+import { ArrowLeft, Home, BookOpen, Flame, Gamepad2, Heart, Moon, Share2, Sparkles, Sun, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 
@@ -233,6 +233,12 @@ export function Sidebar({
           ) : null}
 
           <SidebarSection title={menuCopy.navigation} isDarkMode={isDarkMode}>
+            <SidebarActionRow
+              icon={<ArrowLeft className="h-5 w-5" />}
+              label={currentLanguage.startsWith('en') ? 'Back to portfolio' : 'Volver al portafolio'}
+              onClick={() => window.location.assign('https://dofepro-tech.github.io/Mi-Portafolio/')}
+              isDarkMode={isDarkMode}
+            />
             {onGoHome ? (
               <SidebarActionRow icon={<Home className="h-5 w-5" />} label={t('app.home')} onClick={() => runAndClose(onGoHome)} isDarkMode={isDarkMode} />
             ) : null}
