@@ -866,6 +866,7 @@ export default function App() {
             onOpenUser={openUserHub}
             onGoHome={handleGoHome}
             onOpenVerse={handleNavigateToVerse}
+            showPortfolioReturn={showPortfolioReturn}
             onShareContent={handleShareContent}
             availableAppUpdate={availableAppUpdate ? {
               version: availableAppUpdate.version,
@@ -976,26 +977,19 @@ export default function App() {
         )}
       </main>
 
-      <footer className="flex min-h-12 items-center bg-[#f7fbff] px-4 py-2 text-[#587392] dark:bg-[#111820] dark:text-white/55">
-        <div className="mx-auto flex w-full flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-2">
-          <span className="text-[10px] font-medium uppercase tracking-[0.16em]">© 2026 Dofepro-Tech</span>
-          <span className="hidden sm:inline">•</span>
-          <a href="mailto:dofeprotech@gmail.com" className="text-xs hover:text-[#5aa8ff]">dofeprotech@gmail.com</a>
-          <span className="hidden sm:inline">•</span>
-          <div className="flex items-center gap-3">
-            <a href="https://dofepro-tech.github.io/Mi-Portafolio/" aria-label="Portafolio de Dofepro" title="Portafolio de Dofepro" className="hover:text-[#5aa8ff]">
-              <Globe className="h-4 w-4" />
-            </a>
-            <a href="https://github.com/dofepro" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub" className="hover:text-[#5aa8ff]">
-              <Github className="h-4 w-4" />
-            </a>
-            <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn" className="hover:text-[#5aa8ff]">
-              <Linkedin className="h-4 w-4" />
-            </a>
-          </div>
+      </div>
+
+      <footer className="flex min-h-11 items-center bg-[#111820] px-4 py-2 text-white/55">
+        <div className="mx-auto flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center font-sans text-[10px] leading-4 sm:text-[11px]">
+          <span>© 2026 Dofepro-Tech</span>
+          <span className="text-white/30">•</span>
+          <a href="mailto:dofeprotech@gmail.com" className="hover:text-white">dofeprotech@gmail.com</a>
+          <span className="text-white/30">•</span>
+          <a href="https://dofepro-tech.github.io/Mi-Portafolio/" aria-label="Portafolio de Dofepro" title="Portafolio de Dofepro" className="hover:text-white"><Globe className="h-4 w-4" /></a>
+          <a href="https://github.com/dofepro" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub" className="hover:text-white"><Github className="h-4 w-4" /></a>
+          <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn" className="hover:text-white"><Linkedin className="h-4 w-4" /></a>
         </div>
       </footer>
-      </div>
 
       <Suspense fallback={null}>
         <AnimatePresence>

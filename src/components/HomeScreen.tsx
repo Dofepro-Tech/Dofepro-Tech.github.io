@@ -10,13 +10,13 @@ import { canUseSpeechSynthesis, cancelSpeech, speakText } from '@/src/lib/speech
 import { cn } from '@/src/lib/utils';
 import { AppOverflowMenu } from '@/src/components/AppOverflowMenu';
 import { BrandSeal } from '@/src/components/BrandSeal';
-import { MobileBottomNav, MobilePageFooter } from '@/src/components/MobileBottomNav';
+import { MobileBottomNav } from '@/src/components/MobileBottomNav';
 import { VerseImageShareSheet } from '@/src/components/VerseImageShareSheet';
 import { canNativeShareVerseImage, createVerseImageAsset, downloadVerseImage, nativeShareVerseImage, revokeVerseImageAsset, type VerseImageAsset } from '@/src/lib/shareVerseImage';
 import { fetchChapter } from '@/src/services/bibleApi';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { BookHeart, BookOpen, Bookmark, Calendar, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Flame, Gamepad2, Heart, House, Image, LibraryBig, Menu, Moon, Newspaper, PlayCircle, Quote, Search, Share2, Sparkles, Star, Sun, SunMoon, User, Volume2, X } from 'lucide-react';
+import { ArrowLeft, BookHeart, BookOpen, Bookmark, Calendar, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Flame, Gamepad2, Heart, House, Image, LibraryBig, Menu, Moon, Newspaper, PlayCircle, Quote, Search, Share2, Sparkles, Star, Sun, SunMoon, User, Volume2, X } from 'lucide-react';
 
 const SAVED_DAILY_IMAGE_STORAGE_KEY = 'biblia_nj_saved_daily_images_v1';
 
@@ -69,6 +69,7 @@ interface HomeScreenProps {
   onOpenUser?: () => void;
   onGoHome?: () => void;
   onOpenVerse: (bookAbrev: string, chapter: number, verseNumber: number) => void;
+  showPortfolioReturn?: boolean;
   onShareContent: (payload: SharePayload) => void | Promise<void>;
   availableAppUpdate?: {
     version: string;
@@ -107,6 +108,7 @@ export function HomeScreen(props: HomeScreenProps) {
     onOpenUser,
     onGoHome,
     onOpenVerse,
+    showPortfolioReturn = false,
     onShareContent,
     availableAppUpdate,
     onOpenAppUpdate,
@@ -935,6 +937,17 @@ export function HomeScreen(props: HomeScreenProps) {
               >
                 <Search className="h-4 w-4" />
               </button>
+              {showPortfolioReturn ? (
+                <button
+                  type="button"
+                  onClick={() => window.location.assign('https://dofepro-tech.github.io/Mi-Portafolio/')}
+                  className={cn('flex h-10 w-10 items-center justify-center rounded-2xl border transition-all sm:h-11 sm:w-11', headerButtonTone)}
+                  title="Volver al portafolio"
+                  aria-label="Volver al portafolio"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={onToggleDarkMode}
@@ -1234,7 +1247,6 @@ export function HomeScreen(props: HomeScreenProps) {
           </div>
         </motion.section>
 
-        <MobilePageFooter className="mt-8" />
         </div>
       </div>
 
