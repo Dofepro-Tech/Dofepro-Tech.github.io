@@ -1,4 +1,4 @@
-import { MessageCircle } from 'lucide-react';
+import { Github, Globe, Linkedin } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BrandSeal } from '@/src/components/BrandSeal';
 import { cn } from '@/src/lib/utils';
@@ -21,7 +21,6 @@ interface MobilePageFooterProps {
 }
 
 const SUPPORT_EMAIL = 'dofeprotech@gmail.com';
-const SUPPORT_WHATSAPP_URL = 'https://wa.me/18492618830?text=Hola%2C%20quiero%20informacion%20sobre%20Biblia%20DJ.';
 
 function getScrollParent(element: HTMLElement | null): HTMLElement | Window {
   let current = element?.parentElement ?? null;
@@ -133,21 +132,10 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
 
 export function MobilePageFooter({ className }: MobilePageFooterProps) {
   return (
-    <footer className={cn('w-full pt-5', className)}>
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-white/10 px-2 py-3 text-center font-sans text-[10px] font-medium leading-4 text-white/68 lg:text-[11px]">
+    <footer className={cn('w-full px-4 py-4 text-white/68', className)}>
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center font-sans text-[10px] font-medium leading-4 lg:text-[11px]">
         <BrandSeal className="h-4 w-4 shrink-0 opacity-85" showWordmark={false} />
         <span>© 2026 Dofepro-Tech</span>
-        <span className="text-white/30">·</span>
-        <a
-          href={SUPPORT_WHATSAPP_URL}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="WhatsApp 8492618830"
-          title="WhatsApp 8492618830"
-          className="inline-flex h-6 w-6 items-center justify-center rounded-full text-inherit transition-colors hover:text-white"
-        >
-          <MessageCircle className="h-4 w-4" aria-hidden="true" />
-        </a>
         <span className="text-white/30">·</span>
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
@@ -155,6 +143,10 @@ export function MobilePageFooter({ className }: MobilePageFooterProps) {
         >
           {SUPPORT_EMAIL}
         </a>
+        <span className="text-white/30">·</span>
+        <a href="https://dofepro-tech.github.io/Mi-Portafolio/" aria-label="Portafolio de Dofepro" title="Portafolio de Dofepro" className="inline-flex h-6 w-6 items-center justify-center text-inherit transition-colors hover:text-white"><Globe className="h-4 w-4" /></a>
+        <a href="https://github.com/dofepro" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub" className="inline-flex h-6 w-6 items-center justify-center text-inherit transition-colors hover:text-white"><Github className="h-4 w-4" /></a>
+        <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn" className="inline-flex h-6 w-6 items-center justify-center text-inherit transition-colors hover:text-white"><Linkedin className="h-4 w-4" /></a>
       </div>
     </footer>
   );

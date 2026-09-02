@@ -10,7 +10,7 @@ import { canUseSpeechSynthesis, cancelSpeech, speakText } from '@/src/lib/speech
 import { cn } from '@/src/lib/utils';
 import { AppOverflowMenu } from '@/src/components/AppOverflowMenu';
 import { BrandSeal } from '@/src/components/BrandSeal';
-import { MobileBottomNav } from '@/src/components/MobileBottomNav';
+import { MobileBottomNav, MobilePageFooter } from '@/src/components/MobileBottomNav';
 import { VerseImageShareSheet } from '@/src/components/VerseImageShareSheet';
 import { canNativeShareVerseImage, createVerseImageAsset, downloadVerseImage, nativeShareVerseImage, revokeVerseImageAsset, type VerseImageAsset } from '@/src/lib/shareVerseImage';
 import { fetchChapter } from '@/src/services/bibleApi';
@@ -1088,6 +1088,15 @@ export function HomeScreen(props: HomeScreenProps) {
               >
                 {t('app.challenge_daily_action')}
               </button>
+              <button
+                type="button"
+                onClick={() => { void handleShareDailyVerse(); }}
+                className={cn('inline-flex h-11 w-11 items-center justify-center rounded-full border transition-all', desktopChipTone, isDarkMode ? 'hover:border-[#7dc3ff]/50 hover:bg-[#10284f]' : 'hover:border-[#7dc3ff]/50 hover:bg-[#eaf4ff]')}
+                aria-label={t('menu.share')}
+                title={t('menu.share')}
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
@@ -1248,6 +1257,7 @@ export function HomeScreen(props: HomeScreenProps) {
         </motion.section>
 
         </div>
+        <MobilePageFooter className="mt-8" />
       </div>
 
       <MobileBottomNav items={mobileNavItems} />

@@ -31,7 +31,7 @@ import { dismissAppUpdateVersion, fetchLatestAppUpdate, getAppUpdateTargetUrl, g
 import { getBackendStatusSnapshot, getBackendWarmupDescription, getBackendWarmupTitle, subscribeBackendStatus, type BackendStatusSnapshot, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
 import { getAppShareUrl, shareContent, shareInstalledAndroidApp, type SharePayload } from '@/src/lib/share';
 import { getRandomStartupVerse, hydrateStartupVerse } from '@/src/lib/dailyVerse';
-import { Github, Globe, Linkedin, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 function normalizeBookKey(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -976,18 +976,6 @@ export default function App() {
           />
         )}
       </main>
-      <footer className="flex min-h-11 items-center bg-[#111820] px-4 py-2 text-white/55">
-        <div className="mx-auto flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center font-sans text-[10px] leading-4 sm:text-[11px]">
-          <span>© 2026 Dofepro-Tech</span>
-          <span className="text-white/30">•</span>
-          <a href="mailto:dofeprotech@gmail.com" className="hover:text-white">dofeprotech@gmail.com</a>
-          <span className="text-white/30">•</span>
-          <a href="https://dofepro-tech.github.io/Mi-Portafolio/" aria-label="Portafolio de Dofepro" title="Portafolio de Dofepro" className="hover:text-white"><Globe className="h-4 w-4" /></a>
-          <a href="https://github.com/dofepro" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub" className="hover:text-white"><Github className="h-4 w-4" /></a>
-          <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn" className="hover:text-white"><Linkedin className="h-4 w-4" /></a>
-        </div>
-      </footer>
-
       </div>
 
       <Suspense fallback={null}>

@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { BibleSearchResponse, Book, ChapterData, Verse, Highlight, Bookmark, ReadingChallengeSummary } from '@/src/types';
 import { cn } from '@/src/lib/utils';
 import { PanelNavButtons } from '@/src/components/PanelNavButtons';
-import { MobileBottomNav } from '@/src/components/MobileBottomNav';
+import { MobileBottomNav, MobilePageFooter } from '@/src/components/MobileBottomNav';
 import { fetchChapter, searchBible } from '@/src/services/bibleApi';
 import { getSpeechLanguage } from '@/src/lib/language';
 import { ArrowLeft, BookOpen, Calendar, Gamepad2, Menu, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, Palette, Trash2, MoreVertical, Heart, Info, Share2, Settings, X, Search, ArrowRight, Bookmark as BookmarkIcon, Globe, Volume2, VolumeX, Copy, House, Flame, Star, User } from 'lucide-react';
@@ -2066,6 +2066,7 @@ export function BibleReader({
           })}
         </AnimatePresence>
       )}
+      <MobilePageFooter className="mt-8" />
     </div>
 
       <AnimatePresence>
