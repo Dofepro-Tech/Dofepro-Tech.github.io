@@ -166,6 +166,7 @@ export function BibleReader({
   const [isVerseActionSheetExpanded, setIsVerseActionSheetExpanded] = React.useState(false);
   const [isMobilePickerOpen, setIsMobilePickerOpen] = React.useState(false);
   const [isWelcomeBookSelectorOpen, setIsWelcomeBookSelectorOpen] = React.useState(false);
+  const [isDesktopBookSelectorOpen, setIsDesktopBookSelectorOpen] = React.useState(false);
   const [mobileSelectionTab, setMobileSelectionTab] = React.useState<'book' | 'chapter' | 'verse'>('book');
   const [mobileBookSearchTerm, setMobileBookSearchTerm] = React.useState('');
   const [mobileBookTestamentFilter, setMobileBookTestamentFilter] = React.useState<'old' | 'new'>('old');
@@ -458,10 +459,17 @@ export function BibleReader({
       return;
     }
 
-    setIsMobilePickerOpen(true);
-    setMobileSelectionTab('book');
     setMobileBookSearchTerm('');
     setMobileBookTestamentFilter(selectedBook?.testament.toLowerCase().includes('nuevo') || selectedBook?.testament.toLowerCase().includes('new') ? 'new' : 'old');
+
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setIsDesktopBookSelectorOpen(true);
+      setIsWelcomeBookSelectorOpen(true);
+      return;
+    }
+
+    setIsMobilePickerOpen(true);
+    setMobileSelectionTab('book');
   }, [readerSelectorRequestId]);
 
   useEffect(() => {
@@ -1691,7 +1699,10 @@ export function BibleReader({
         {chapterData && (
           <div className="border-t border-olive/5 bg-paper/70 px-4 py-4 md:px-8">
             <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)_7rem_7rem] gap-3 lg:grid-cols-[minmax(0,1fr)_7rem_7rem_9rem]">
-              <details className={cn(
+              <details
+                open={isDesktopBookSelectorOpen}
+                onToggle={(event) => setIsDesktopBookSelectorOpen(event.currentTarget.open)}
+                className={cn(
                 'relative min-w-0 rounded-[26px] px-4 pb-3 pt-2 [&[open]>summary_svg]:rotate-180',
                 isDarkMode
                   ? 'border border-white/10 bg-[#0d1016] shadow-[0_14px_28px_rgba(0,0,0,0.22)]'
@@ -1752,6 +1763,7 @@ export function BibleReader({
                                 if (detailsElement instanceof HTMLDetailsElement) {
                                   detailsElement.open = false;
                                 }
+                                setIsDesktopBookSelectorOpen(false);
                                 setFocusedVerseId(null);
                                 onSelectBook(book);
                               }}
@@ -1797,6 +1809,7 @@ export function BibleReader({
                                 if (detailsElement instanceof HTMLDetailsElement) {
                                   detailsElement.open = false;
                                 }
+                                setIsDesktopBookSelectorOpen(false);
                                 setFocusedVerseId(null);
                                 onSelectBook(book);
                               }}
