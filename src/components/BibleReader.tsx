@@ -165,6 +165,7 @@ export function BibleReader({
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [isVerseActionSheetExpanded, setIsVerseActionSheetExpanded] = React.useState(false);
   const [isMobilePickerOpen, setIsMobilePickerOpen] = React.useState(false);
+  const [isWelcomeBookSelectorOpen, setIsWelcomeBookSelectorOpen] = React.useState(false);
   const [mobileSelectionTab, setMobileSelectionTab] = React.useState<'book' | 'chapter' | 'verse'>('book');
   const [mobileBookSearchTerm, setMobileBookSearchTerm] = React.useState('');
   const [mobileBookTestamentFilter, setMobileBookTestamentFilter] = React.useState<'old' | 'new'>('old');
@@ -1946,7 +1947,7 @@ export function BibleReader({
                   </p>
 
                   <div className="mt-8 flex flex-wrap justify-center gap-3">
-                    <button onClick={handleSidebarMenuOpen} className="rounded-full bg-olive px-5 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-paper transition-all hover:bg-olive-dark flex items-center gap-2">
+                    <button onClick={() => setIsWelcomeBookSelectorOpen(true)} className="rounded-full bg-olive px-5 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.2em] text-paper transition-all hover:bg-olive-dark flex items-center gap-2">
                       <Menu className="h-4 w-4" />
                       {t('menu.books')}
                     </button>
@@ -1965,6 +1966,49 @@ export function BibleReader({
                       </button>
                     )}
                   </div>
+
+                  {isWelcomeBookSelectorOpen ? (
+                    <div className="mt-6 overflow-hidden rounded-[26px] border border-olive/12 bg-paper text-left shadow-[0_18px_44px_rgba(18,33,64,0.1)]">
+                      <div className="flex items-center justify-between gap-3 border-b border-olive/10 px-4 py-3">
+                        <p className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-olive">{t('menu.books')}</p>
+                        <button
+                          type="button"
+                          onClick={() => setIsWelcomeBookSelectorOpen(false)}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-olive transition-colors hover:bg-olive/5"
+                          aria-label={t('app.back')}
+                          title={t('app.back')}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="grid max-h-[22rem] gap-4 overflow-y-auto p-4 sm:grid-cols-2">
+                        {[
+                          [readerCopy.old, oldTestamentBooks],
+                          [readerCopy.new, newTestamentBooks],
+                        ].map(([title, testamentBooks]) => (
+                          <section key={String(title)}>
+                            <p className="mb-2 font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-olive/55">{String(title)}</p>
+                            <div className="space-y-1">
+                              {(testamentBooks as Book[]).map((book) => (
+                                <button
+                                  key={book.abrev}
+                                  type="button"
+                                  onClick={() => {
+                                    setFocusedVerseId(null);
+                                    setIsWelcomeBookSelectorOpen(false);
+                                    onSelectBook(book);
+                                  }}
+                                  className="block w-full rounded-xl px-3 py-2 text-left font-sans text-sm text-ink transition-colors hover:bg-olive/5"
+                                >
+                                  {book.names[0]}
+                                </button>
+                              ))}
+                            </div>
+                          </section>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="mt-8 grid gap-3 sm:grid-cols-3 text-left">
                     <CompactReaderStat icon={<Flame className="h-4 w-4" />} label={t('app.challenge_streak')} value={String(challengeSummary.streak)} />
