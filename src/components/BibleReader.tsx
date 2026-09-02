@@ -1179,7 +1179,7 @@ export function BibleReader({
   return (
     <div 
       ref={mainScrollRef}
-      className="relative flex-1 h-screen overflow-y-auto bg-[#111820] transition-colors duration-300 lg:bg-paper"
+      className="relative flex h-screen flex-1 flex-col overflow-y-auto bg-[#111820] transition-colors duration-300 lg:bg-paper"
     >
       <div ref={mobileHeaderRef} className="sticky top-0 z-40 border-b border-white/10 bg-[#050b14]/96 px-3 py-3 backdrop-blur-xl lg:hidden">
         <div className="flex items-center gap-2.5">
@@ -1939,7 +1939,7 @@ export function BibleReader({
         )}
       </div>
 
-      <div className={cn('mx-auto w-full max-w-3xl flex-1 px-4 pb-72 pt-6 md:px-12 lg:py-10 lg:pb-32', isMobilePickerOpen && 'hidden lg:block')}>
+      <div className={cn('mx-auto w-full max-w-3xl flex-1 px-4 pb-72 pt-6 md:px-12 lg:py-10', isMobilePickerOpen && 'hidden lg:block')}>
         {!chapterData ? (
           <div className="min-h-full flex flex-col items-center justify-center p-6 text-center">
             <div className="w-full max-w-3xl rounded-[32px] border border-olive/10 bg-paper-light/90 p-6 shadow-[0_20px_60px_rgba(18,33,64,0.08)] sm:p-8">

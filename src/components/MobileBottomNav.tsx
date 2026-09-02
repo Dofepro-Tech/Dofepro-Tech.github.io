@@ -132,7 +132,7 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
 
 export function MobilePageFooter({ className }: MobilePageFooterProps) {
   return (
-    <footer className={cn('w-full px-4 py-4 text-white/68', className)}>
+    <footer className={cn('w-full px-4 py-1.5 text-white/68', className)}>
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center font-sans text-[10px] font-medium leading-4 lg:text-[11px]">
         <BrandSeal className="h-4 w-4 shrink-0 opacity-85" showWordmark={false} />
         <span>© 2026 Dofepro-Tech</span>
