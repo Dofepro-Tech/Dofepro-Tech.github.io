@@ -976,9 +976,6 @@ export default function App() {
           />
         )}
       </main>
-
-      </div>
-
       <footer className="flex min-h-11 items-center bg-[#111820] px-4 py-2 text-white/55">
         <div className="mx-auto flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center font-sans text-[10px] leading-4 sm:text-[11px]">
           <span>© 2026 Dofepro-Tech</span>
@@ -990,6 +987,8 @@ export default function App() {
           <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn" className="hover:text-white"><Linkedin className="h-4 w-4" /></a>
         </div>
       </footer>
+
+      </div>
 
       <Suspense fallback={null}>
         <AnimatePresence>
