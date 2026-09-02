@@ -717,7 +717,7 @@ export function HomeScreen(props: HomeScreenProps) {
         headerTitle={imageSheetMode === 'preview' ? t('share_sheet.preview_title') : t('share_sheet.share_title')}
         headerSubtitle={imageSheetMode === 'preview' ? t('share_sheet.preview_subtitle') : t('share_sheet.share_subtitle')}
       />
-      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col px-4 pb-36 pt-4 sm:px-6 lg:px-8 lg:pb-24">
+      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col px-4 pb-24 pt-4 sm:px-6 lg:px-8 lg:pb-0">
         <div className="lg:hidden">
           <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-white/10 bg-[#030812]/96 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
             <div className="flex items-center justify-between gap-3">
@@ -1257,7 +1257,7 @@ export function HomeScreen(props: HomeScreenProps) {
         </motion.section>
 
         </div>
-        <MobilePageFooter className="mt-8" />
+        <MobilePageFooter />
       </div>
 
       <MobileBottomNav items={mobileNavItems} />

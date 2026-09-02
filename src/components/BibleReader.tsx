@@ -2066,7 +2066,7 @@ export function BibleReader({
           })}
         </AnimatePresence>
       )}
-      <MobilePageFooter className="mt-8" />
+      <MobilePageFooter />
     </div>
 
       <AnimatePresence>

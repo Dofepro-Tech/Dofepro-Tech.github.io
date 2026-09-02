@@ -172,7 +172,15 @@ export async function fetchBooks(): Promise<Book[]> {
  */
 export async function fetchChapter(bookName: string, chapter: number, lang: string = 'es'): Promise<ChapterData> {
   const version = getBibleVersion(lang);
-  const res = await fetch(`${BASE_URL}/read/${version}/${encodeURIComponent(bookName)}/${chapter}`);
+  const query = new URLSearchParams({
+    book: bookName,
+    chapter: String(chapter),
+    lang: normalizeAppLanguage(lang),
+  });
+  const chapterUrl = canUseConfiguredApi()
+    ? `${resolveConfiguredApiUrl('/api/bible/read')}?${query.toString()}`
+    : `${BASE_URL}/read/${version}/${encodeURIComponent(bookName)}/${chapter}`;
+  const res = await fetch(chapterUrl);
   if (!res.ok) throw new Error('Failed to fetch chapter');
   return res.json();
 }

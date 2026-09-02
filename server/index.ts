@@ -5,7 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import type { RequestHandler, Response } from 'express';
-import { normalizeAppLanguage } from '../src/lib/language.ts';
+import { getBibleVersion, normalizeAppLanguage } from '../src/lib/language.ts';
 import type { ChatMessage, StudyStep } from '../src/types.ts';
 import {
   generateAiText,
@@ -374,6 +374,29 @@ const handleBibleSearch: RequestHandler = async (request, response) => {
   }
 };
 
+const handleBibleRead: RequestHandler = async (request, response) => {
+  const book = typeof request.query.book === 'string' ? request.query.book.trim() : '';
+  const chapter = typeof request.query.chapter === 'string' ? Number(request.query.chapter) : NaN;
+  const language = normalizeAppLanguage(typeof request.query.lang === 'string' ? request.query.lang : undefined);
+
+  if (!book || !Number.isInteger(chapter) || chapter < 1) {
+    return sendError(response, 400, language === 'en' ? 'Invalid Bible reference.' : 'Referencia bíblica inválida.');
+  }
+
+  try {
+    const version = getBibleVersion(language);
+    const bibleResponse = await fetch(`https://bible-api.deno.dev/api/read/${version}/${encodeURIComponent(book)}/${chapter}`);
+    if (!bibleResponse.ok) {
+      throw new Error(`Bible provider returned ${bibleResponse.status}.`);
+    }
+
+    return response.json(await bibleResponse.json());
+  } catch (error) {
+    console.error('Bible read route error:', error);
+    return sendError(response, 502, language === 'en' ? 'Could not load this Bible chapter.' : 'No se pudo cargar este capítulo bíblico.');
+  }
+};
+
 const handleDailyContent: RequestHandler = async (request, response) => {
   const requestedLanguage = typeof request.query.lang === 'string' ? request.query.lang : undefined;
   const language = normalizeAppLanguage(requestedLanguage);
@@ -427,6 +450,7 @@ registerAiRoutes('/api/ai');
 registerAiRoutes('/api/gemini');
 app.get('/api/health', handleHealth);
 app.get('/api/ai/runtime', handleAiRuntimeConfig);
+app.get('/api/bible/read', handleBibleRead);
 app.get('/api/bible/search', handleBibleSearch);
 app.get('/api/daily-content', handleDailyContent);
 
