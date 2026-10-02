@@ -1,14 +1,16 @@
 {
   "version": "1.0.8",
   "channel": "stable",
-  "publishedAt": "2026-10-02T00:30:52.920Z",
+  "publishedAt": "2026-10-02T01:27:05.820Z",
   "downloadUrl": "https://dofepro-tech.github.io/biblia-dj/",
   "apkUrl": "https://dofepro-tech.github.io/biblia-dj-android.apk",
   "updateUrl": "https://dofepro-tech.github.io/app-update.json",
   "notes": [
-    "El botón de descarga ya no aparece dentro de la app; permanece disponible en la web."
+    "El botón de descarga ya no aparece dentro de la app; permanece disponible en la web.",
+    "El aviso de actualización ahora muestra un resumen de las mejoras incluidas."
   ],
   "notesEn": [
-    "The APK download button is hidden inside the app and remains available on the website."
+    "The APK download button is hidden inside the app and remains available on the website.",
+    "Update notices now show a summary of the included improvements."
   ]
 }
