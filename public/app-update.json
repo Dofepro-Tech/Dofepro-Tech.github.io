@@ -1,14 +1,20 @@
 {
-  "version": "1.0.9",
+  "version": "1.0.10",
   "channel": "stable",
-  "publishedAt": "2026-10-02T01:37:23.060Z",
+  "publishedAt": "2026-10-02T18:56:09.186Z",
   "downloadUrl": "https://dofepro-tech.github.io/biblia-dj/",
   "apkUrl": "https://dofepro-tech.github.io/biblia-dj-android.apk",
   "updateUrl": "https://dofepro-tech.github.io/app-update.json",
   "notes": [
-    "Mejor contraste para los encabezados de las secciones diarias en tema claro."
+    "Búsqueda móvil corregida y diccionario Strong offline con 14.298 entradas y referencias.",
+    "El botón Descargar APK se oculta dentro de la app y sigue disponible en la web.",
+    "Colosenses 3:23 ahora aparece en el splash, menús laterales y footer.",
+    "Mejor contraste de encabezados diarios en tema claro."
   ],
   "notesEn": [
-    "Improved contrast for daily section headings in light theme."
+    "Mobile search fixed; offline Strong dictionary with 14,298 entries and references.",
+    "The APK download button is hidden in the app and remains on the website.",
+    "Colossians 3:23 now appears on the splash, side menus, and footer.",
+    "Improved contrast for daily headings in light theme."
   ]
 }
