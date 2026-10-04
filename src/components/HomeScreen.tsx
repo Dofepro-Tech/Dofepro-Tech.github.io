@@ -112,7 +112,7 @@ export function HomeScreen(props: HomeScreenProps) {
   const [sharedImageAsset, setSharedImageAsset] = useState<any>(null);
   const [sharedImageTitle, setSharedImageTitle] = useState<string>('');
   const [sharedImageText, setSharedImageText] = useState<string>('');
-  const [openMobileDevotionalId, setOpenMobileDevotionalId] = useState<'reflection' | 'passage' | 'prayer'>('reflection');
+  const [openMobileDevotionalId, setOpenMobileDevotionalId] = useState<'reflection' | 'passage' | 'prayer' | null>(null);
   const [isImageShareSheetOpen, setIsImageShareSheetOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [imageSheetMode, setImageSheetMode] = useState<'preview' | 'share'>('preview');
@@ -637,21 +637,25 @@ export function HomeScreen(props: HomeScreenProps) {
             <div className="min-w-0 space-y-6">
               {/* DEVOCIONAL MOVIL */}
               {homeSections.devotional && (
-                <section className="rounded-[28px] border border-white/10 bg-[#111820] p-4 text-white shadow-xl">
-                  <div className="flex items-center justify-between gap-3 mb-4"><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">{mobileCopy.devotional}</p><span className="text-xs font-bold text-[#78b8ff] bg-[#0f2d52] px-2 py-0.5 rounded-full">{challengeSummary.completedToday}/{challengeSummary.totalDailyTasks}</span></div>
-                  <div className="space-y-3">
+                <section className="rounded-2xl border border-white/10 bg-[#111820] p-3.5 text-white sm:p-4">
+                  <div className="mb-2 flex items-center justify-between gap-3"><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">{mobileCopy.devotional}</p><span className="rounded-full bg-[#0f2d52] px-2 py-0.5 text-xs font-bold text-[#78b8ff]">{challengeSummary.completedToday}/{challengeSummary.totalDailyTasks}</span></div>
+                  <div className="divide-y divide-white/8">
                     {devotionalItems.map(item => {
                       const isOpen = openMobileDevotionalId === item.id;
                       return (
-                        <div key={item.id} className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-3 transition-all">
-                          <button onClick={() => setOpenMobileDevotionalId(c => c === item.id ? null as any : item.id)} className="flex w-full items-center gap-3 text-left"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0f2d52] text-[#78b8ff]">{item.icon}</span><div className="flex-1"><p className="text-base font-semibold text-white">{item.title}</p></div><ChevronDown className={cn('h-4 w-4 text-white/30 transition-transform', isOpen && 'rotate-180')} /></button>
+                        <div key={item.id} className="py-1">
+                          <button type="button" aria-expanded={isOpen} onClick={() => setOpenMobileDevotionalId(current => current === item.id ? null : item.id)} className="flex min-h-12 w-full min-w-0 items-center gap-3 py-2 text-left">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0f2d52] text-[#78b8ff]">{item.icon}</span>
+                            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{item.title}</span>
+                            <ChevronDown className={cn('h-4 w-4 shrink-0 text-white/45 transition-transform', isOpen && 'rotate-180')} />
+                          </button>
                           {isOpen && (
-                            <div className="mt-4 rounded-[20px] bg-[#0c1118] p-4 border border-white/5">
-                              <p className="text-xs uppercase tracking-widest text-[#78b8ff] mb-2">{item.reference}</p>
+                            <div className="pb-3 pl-12 pr-1 pt-1">
+                              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#78b8ff]">{item.reference}</p>
                               <p className="text-sm leading-6 text-white/78">{item.body}</p>
-                              <div className="mt-4 flex gap-3">
-                                <button onClick={item.primaryAction} className="flex-1 flex items-center justify-center gap-2 rounded-full bg-[var(--primary)] py-3 text-[11px] font-bold uppercase text-white"><Volume2 className="h-4 w-4" />{item.primaryLabel}</button>
-                                {item.secondaryAction && <button onClick={item.secondaryAction} className="flex-1 flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 py-3 text-[11px] font-bold uppercase text-white"><BookOpen className="h-4 w-4" />{item.secondaryLabel}</button>}
+                              <div className="mt-3 grid grid-cols-2 gap-2">
+                                <button type="button" onClick={item.primaryAction} className="flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-2 py-2 text-[10px] font-bold uppercase text-white"><Volume2 className="h-4 w-4 shrink-0" />{item.primaryLabel}</button>
+                                {item.secondaryAction && <button type="button" onClick={item.secondaryAction} className="flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-[10px] font-bold uppercase text-white"><BookOpen className="h-4 w-4 shrink-0" />{item.secondaryLabel}</button>}
                               </div>
                             </div>
                           )}
