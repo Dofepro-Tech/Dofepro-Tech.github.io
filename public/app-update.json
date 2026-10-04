@@ -1,18 +1,18 @@
 {
-  "version": "1.0.11",
+  "version": "1.0.12",
   "channel": "stable",
-  "publishedAt": "2026-10-04T01:53:14.458Z",
+  "publishedAt": "2026-10-04T03:23:48.676Z",
   "downloadUrl": "https://dofepro-tech.github.io/biblia-dj/",
   "apkUrl": "https://dofepro-tech.github.io/biblia-dj-android.apk",
   "updateUrl": "https://dofepro-tech.github.io/app-update.json",
   "notes": [
-    "Se corrige el acceso con Google en Android mediante el retorno OAuth oficial.",
-    "Vuelve la opción para escuchar el capítulo y el versículo seleccionado.",
-    "El juego ya no suma puntos ni palabras extra al repetir niveles completados."
+    "Puedes instalar paquetes adicionales de voz local y actualizar la lista desde Android.",
+    "Se oculta la descarga de APK dentro de la aplicación instalada.",
+    "El progreso autenticado del juego se sincroniza y la interfaz mejora en pantallas pequeñas."
   ],
   "notesEn": [
-    "Fixed Google sign-in on Android through the official OAuth return URL.",
-    "Restored controls to listen to a chapter and the selected verse.",
-    "The game no longer adds extra points or words when replaying completed levels."
+    "Install additional local voice packs and refresh the list on Android.",
+    "The APK download button is hidden inside the installed app.",
+    "Signed-in game progress syncs across sessions, with improved small-screen layouts."
   ]
 }
