@@ -1,18 +1,18 @@
 {
-  "version": "1.0.12",
+  "version": "1.0.13",
   "channel": "stable",
-  "publishedAt": "2026-10-04T03:31:32.370Z",
+  "publishedAt": "2026-10-04T22:16:21.895Z",
   "downloadUrl": "https://dofepro-tech.github.io/biblia-dj/",
   "apkUrl": "https://dofepro-tech.github.io/biblia-dj-android.apk",
   "updateUrl": "https://dofepro-tech.github.io/app-update.json",
   "notes": [
-    "Puedes instalar paquetes adicionales de voz local y actualizar la lista desde Android.",
-    "Se oculta la descarga de APK dentro de la aplicación instalada.",
-    "El progreso autenticado del juego se sincroniza y la interfaz mejora en pantallas pequeñas."
+    "Tus favoritos y el progreso del juego se sincronizan con tu perfil.",
+    "Puedes instalar y actualizar voces locales desde Android; la APK se oculta dentro de la app instalada.",
+    "El contenido diario se adapta mejor a pantallas pequeñas."
   ],
   "notesEn": [
-    "Install additional local voice packs and refresh the list on Android.",
-    "The APK download button is hidden inside the installed app.",
-    "Signed-in game progress syncs across sessions, with improved small-screen layouts."
+    "Your favorites and game progress now sync with your profile.",
+    "Install and refresh local voices on Android; the APK button is hidden inside the installed app.",
+    "Daily content adapts better to small screens."
   ]
 }

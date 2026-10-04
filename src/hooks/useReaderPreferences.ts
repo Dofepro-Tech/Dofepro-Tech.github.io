@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getThemePalette, lightThemePalettes, darkThemePalettes } from '@/src/lib/themePalettes';
 
 function canUseBrowserStorage() {
   return typeof window !== 'undefined';
@@ -51,9 +52,27 @@ function readInitialTheme() {
 export function useReaderPreferences() {
   const [isDarkMode, setIsDarkMode] = useState(readInitialTheme);
   const [fontSize, setFontSize] = useState(() => readStoredNumber('bible_font_size', 22));
-  const [accentColor, setAccentColor] = useState(() => readStoredString('bible_accent_color', 'blue'));
+  const [lightAccent, setLightAccent] = useState(() => readStoredString('bible_accent_color_light', readStoredString('bible_accent_color', lightThemePalettes[0].id)));
+  const [darkAccent, setDarkAccent] = useState(() => readStoredString('bible_accent_color_dark', darkThemePalettes[0].id));
+  const accentColor = isDarkMode ? darkAccent : lightAccent;
+  const setAccentColor = (color: string) => isDarkMode ? setDarkAccent(color) : setLightAccent(color);
   const [voiceURI, setVoiceURI] = useState(() => readStoredString('bible_voice_uri', ''));
   const [hasSeenWelcome, setHasSeenWelcome] = useState(() => readStoredBoolean('bible_has_seen_welcome', false));
+  const [keepScreenOn, setKeepScreenOn] = useState(() => readStoredBoolean('bible_keep_screen_on', false));
+  const [startupPage, setStartupPage] = useState<'home' | 'reader'>(() => (readStoredString('bible_startup_page', 'home') as 'home' | 'reader'));
+  const [homeSections, setHomeSections] = useState(() => {
+    const saved = localStorage.getItem('bible_home_sections_v1');
+    return saved ? JSON.parse(saved) : {
+      dailyVerse: true,
+      devotional: true,
+      images: true,
+      news: true,
+      videos: true,
+      reflections: true,
+      testimonies: true,
+      game: true,
+    };
+  });
 
   useEffect(() => {
     if (!canUseBrowserStorage()) {
@@ -69,9 +88,15 @@ export function useReaderPreferences() {
       return;
     }
 
-    document.documentElement.setAttribute('data-theme', accentColor);
-    localStorage.setItem('bible_accent_color', accentColor);
-  }, [accentColor]);
+    const root = document.documentElement;
+    const palette = getThemePalette(accentColor, isDarkMode);
+    root.setAttribute('data-theme', palette.id);
+    root.style.setProperty('--primary', palette.color);
+    root.style.setProperty('--primary-hover', palette.hover);
+    root.style.setProperty('--primary-rgb', `${parseInt(palette.color.slice(1, 3), 16)}, ${parseInt(palette.color.slice(3, 5), 16)}, ${parseInt(palette.color.slice(5, 7), 16)}`);
+    localStorage.setItem(isDarkMode ? 'bible_accent_color_dark' : 'bible_accent_color_light', palette.id);
+    localStorage.setItem('bible_accent_color', palette.id);
+  }, [accentColor, isDarkMode]);
 
   useEffect(() => {
     if (!canUseBrowserStorage()) {
@@ -97,6 +122,30 @@ export function useReaderPreferences() {
     localStorage.setItem('bible_has_seen_welcome', String(hasSeenWelcome));
   }, [hasSeenWelcome]);
 
+  useEffect(() => {
+    if (!canUseBrowserStorage()) {
+      return;
+    }
+
+    localStorage.setItem('bible_keep_screen_on', String(keepScreenOn));
+  }, [keepScreenOn]);
+
+  useEffect(() => {
+    if (!canUseBrowserStorage()) {
+      return;
+    }
+
+    localStorage.setItem('bible_startup_page', startupPage);
+  }, [startupPage]);
+
+  useEffect(() => {
+    if (!canUseBrowserStorage()) {
+      return;
+    }
+
+    localStorage.setItem('bible_home_sections_v1', JSON.stringify(homeSections));
+  }, [homeSections]);
+
   return {
     isDarkMode,
     setIsDarkMode,
@@ -108,5 +157,11 @@ export function useReaderPreferences() {
     setVoiceURI,
     hasSeenWelcome,
     setHasSeenWelcome,
+    keepScreenOn,
+    setKeepScreenOn,
+    startupPage,
+    setStartupPage,
+    homeSections,
+    setHomeSections,
   };
 }

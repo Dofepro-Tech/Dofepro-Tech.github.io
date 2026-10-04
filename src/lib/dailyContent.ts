@@ -18,6 +18,7 @@ export interface DailyResourceCard {
   sourceName?: string;
   sourceUrl?: string;
   sourceLabel?: string;
+  publishedAt?: string;
   verseReference?: DailyVerseReference;
   quote?: string;
   accent: 'gold' | 'blue' | 'emerald' | 'rose' | 'olive';
@@ -305,8 +306,8 @@ const IMAGE_CARDS: LocalizedDailyResourceCard[] = [
       en: '“Your word is a lamp for my feet, a light on my path.”',
     },
     sourceUrl: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=90',
-    sourceName: { es: 'Imagen remota del día', en: 'Remote image of the day' },
-    sourceLabel: { es: 'Ver imagen', en: 'View image' },
+    sourceName: { es: 'Unsplash · foto de archivo', en: 'Unsplash · archive photo' },
+    sourceLabel: { es: 'Ver foto', en: 'View photo' },
     verseReference: {
       bookAbrev: 'Sal',
       chapter: 119,
@@ -334,8 +335,8 @@ const IMAGE_CARDS: LocalizedDailyResourceCard[] = [
       en: '“For I know the plans I have for you...”',
     },
     sourceUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=90',
-    sourceName: { es: 'Imagen remota del día', en: 'Remote image of the day' },
-    sourceLabel: { es: 'Ver imagen', en: 'View image' },
+    sourceName: { es: 'Unsplash · foto de archivo', en: 'Unsplash · archive photo' },
+    sourceLabel: { es: 'Ver foto', en: 'View photo' },
     verseReference: {
       bookAbrev: 'Jer',
       chapter: 29,
@@ -363,8 +364,8 @@ const IMAGE_CARDS: LocalizedDailyResourceCard[] = [
       en: '“In peace I will lie down and sleep...”',
     },
     sourceUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=90',
-    sourceName: { es: 'Imagen remota del día', en: 'Remote image of the day' },
-    sourceLabel: { es: 'Ver imagen', en: 'View image' },
+    sourceName: { es: 'Unsplash · foto de archivo', en: 'Unsplash · archive photo' },
+    sourceLabel: { es: 'Ver foto', en: 'View photo' },
     verseReference: {
       bookAbrev: 'Sal',
       chapter: 4,
@@ -475,90 +476,48 @@ const NEWS_CARDS: LocalizedDailyResourceCard[] = [
 const VIDEO_CARDS: LocalizedDailyResourceCard[] = [
   {
     id: 'video-bibleproject',
-    title: { es: 'Meditación guiada en video', en: 'Guided reflection in video' },
+    title: { es: 'Episodios recientes de Vida Dura', en: 'Recent CBN Vida Dura episodes' },
     body: {
-      es: 'Abre un video real para acompañar tu lectura con una pausa devocional y una idea clara para hoy.',
-      en: 'Open a real video to accompany your reading with a devotional pause and one clear idea for today.',
+      es: 'Videos de CBN con testimonios reales en español. Revisa la fecha de cada episodio en su página oficial.',
+      en: 'CBN videos featuring real-life stories. Check each episode date on the official page.',
     },
-    sourceName: { es: 'GodTube', en: 'GodTube' },
-    sourceUrl: 'https://www.godtube.com/watch/?v=GGDLL7NX',
+    sourceName: { es: 'CBN · Vida Dura', en: 'CBN · Vida Dura' },
+    sourceUrl: 'https://cbn.com/spanish/vida-dura',
     sourceLabel: { es: 'Ver video', en: 'Watch video' },
     accent: 'emerald',
-  },
-  {
-    id: 'video-ascension',
-    title: { es: 'Historia bíblica para ver hoy', en: 'A Bible story to watch today' },
-    body: {
-      es: 'Un segundo video con narrativa y aplicación para cuando quieras profundizar sin salir de la app por error.',
-      en: 'A second video with narrative and application for when you want to go deeper without ending up in a dead action.',
-    },
-    sourceName: { es: 'GodTube', en: 'GodTube' },
-    sourceUrl: 'https://www.godtube.com/watch/?v=EEBCCJNU',
-    sourceLabel: { es: 'Abrir video', en: 'Open video' },
-    accent: 'gold',
-  },
-  {
-    id: 'video-devotional',
-    title: { es: 'Devocional visual para hoy', en: 'A visual devotional for today' },
-    body: {
-      es: 'Una tercera opción para ver un devocional o enseñanza breve y seguir meditando sin cortar el ritmo.',
-      en: 'A third option to watch a short devotional or teaching and keep meditating without losing momentum.',
-    },
-    sourceName: { es: 'YouTube', en: 'YouTube' },
-    sourceUrl: {
-      es: 'https://www.youtube.com/results?search_query=devocional+cristiano+de+hoy',
-      en: 'https://www.youtube.com/results?search_query=daily+christian+devotional+video',
-    },
-    sourceLabel: { es: 'Ver devocional', en: 'Watch devotional' },
-    accent: 'blue',
   },
 ];
 
 const TESTIMONIES: LocalizedDailyResourceCard[] = [
   {
     id: 'testimony-iamsecond',
-    title: { es: 'Historias que sostienen la fe', en: 'Stories that strengthen faith' },
+    title: { es: 'Historias reales de Vida Dura', en: 'Real-life stories from Vida Dura' },
     body: {
-      es: 'Abre un testimonio real de cambio, perseverancia y encuentro con Dios para acompañar tu jornada.',
-      en: 'Open a real testimony of change, perseverance, and encounter with God to accompany your day.',
+      es: 'Archivo oficial de CBN con testimonios en español. Consulta la fecha de publicación de cada historia.',
+      en: 'Official CBN archive of Spanish-language testimonies. Check each story’s publication date.',
     },
-    sourceName: { es: 'CBN', en: 'I Am Second' },
+    sourceName: { es: 'CBN · Vida Dura', en: 'CBN · Vida Dura' },
     sourceUrl: {
-      es: 'https://es.cbn.com/tags/testimonio',
-      en: 'https://www.iamsecond.com/films/',
+      es: 'https://cbn.com/spanish/vida-dura',
+      en: 'https://cbn.com/spanish/vida-dura',
     },
-    sourceLabel: { es: 'Abrir testimonios', en: 'Open testimonies' },
+    sourceLabel: { es: 'Ver episodios', en: 'View episodes' },
     accent: 'rose',
   },
   {
     id: 'testimony-cbn',
-    title: { es: 'Voces de restauración y esperanza', en: 'Voices of restoration and hope' },
+    title: { es: 'Testimonios con Paco Palafox', en: 'Testimonios with Paco Palafox' },
     body: {
-      es: 'Otra puerta real para leer o ver historias de fe que conectan con la vida cotidiana.',
-      en: 'Another real place to read or watch stories of faith that connect with everyday life.',
+      es: 'Podcast de Buena Nueva con relatos personales publicados semanalmente.',
+      en: 'Buena Nueva podcast featuring personal stories published weekly.',
     },
-    sourceName: { es: 'CBN', en: 'CBN' },
+    sourceName: { es: 'Buena Nueva', en: 'Buena Nueva' },
     sourceUrl: {
-      es: 'https://www1.cbn.com/testimonies',
-      en: 'https://cbn.com/tags/testimony',
+      es: 'https://omny.fm/shows/testimoniospacopalafox',
+      en: 'https://omny.fm/shows/testimoniospacopalafox',
     },
-    sourceLabel: { es: 'Abrir historias', en: 'Open stories' },
+    sourceLabel: { es: 'Escuchar episodios', en: 'Listen to episodes' },
     accent: 'olive',
-  },
-  {
-    id: 'testimony-guideposts',
-    title: { es: 'Relatos de fe para seguir creyendo', en: 'Faith stories that help you keep believing' },
-    body: {
-      es: 'Una tercera selección con historias de transformación para acompañar la lectura con esperanza real.',
-      en: 'A third selection of transformation stories to accompany your reading with real hope.',
-    },
-    sourceName: { es: 'Guideposts', en: 'Guideposts' },
-    sourceUrl: {
-      es: 'https://www.youtube.com/results?search_query=testimonio+cristiano+de+fe',
-      en: 'https://guideposts.org/positive-living/guideposts-stories/',
-    },
-    sourceLabel: { es: 'Abrir testimonio', en: 'Open testimony' },
-    accent: 'gold',
   },
 ];
 

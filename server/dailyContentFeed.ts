@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import Parser from 'rss-parser';
 
 type AppLanguage = 'es' | 'en';
@@ -17,6 +18,7 @@ interface RemoteFeedItem {
   author?: string;
   enclosure?: {
     url?: string;
+    type?: string;
   };
   'content:encoded'?: string;
 }
@@ -30,6 +32,7 @@ interface RemoteDailyResourceCard {
   sourceName?: string;
   sourceUrl?: string;
   sourceLabel?: string;
+  publishedAt?: string;
   accent: AccentTone;
 }
 
@@ -45,6 +48,7 @@ export interface RemoteDailyContentResponse {
 interface FeedSource {
   id: string;
   url: string;
+  imageUrl?: string;
   accent: AccentTone;
   sourceName: { es: string; en: string };
   sourceLabel: { es: string; en: string };
@@ -52,13 +56,20 @@ interface FeedSource {
   fallbackBody: { es: string; en: string };
 }
 
-interface RemoteCardCandidate extends RemoteDailyResourceCard {
+interface RemoteCardCandidate extends Omit<RemoteDailyResourceCard, 'publishedAt'> {
   publishedAt: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const SECTION_LIMIT = 16;
 const FEED_TIMEOUT_MS = 8000;
+const MAX_ITEM_AGE_MS: Record<RemoteSectionKey, number> = {
+  reflections: 30 * 24 * 60 * 60 * 1000,
+  sermons: 45 * 24 * 60 * 60 * 1000,
+  newsItems: 14 * 24 * 60 * 60 * 1000,
+  videos: 14 * 24 * 60 * 60 * 1000,
+  testimonies: 45 * 24 * 60 * 60 * 1000,
+};
 
 const parser = new Parser<Record<string, never>, RemoteFeedItem>();
 const dailyContentCache = new Map<AppLanguage, { expiresAt: number; payload: RemoteDailyContentResponse }>();
@@ -121,39 +132,16 @@ const FEED_SOURCES: Record<RemoteSectionKey, Partial<Record<AppLanguage, FeedSou
   sermons: {
     es: [
       {
-        id: 'desiring-god-youtube',
-        url: 'https://www.youtube.com/feeds/videos.xml?user=desiringGod',
+        id: 'gracia-a-vosotros-podcast',
+        url: 'https://www.oneplace.com/ministries/gracia-a-vosotros/subscribe/podcast.xml',
+        imageUrl: 'https://content.swncdn.com/zcast/oneplace/host-images/gracia-a-vosotros/1400x1400.jpg',
         accent: 'emerald',
-        sourceName: { es: 'Desiring God', en: 'Desiring God' },
+        sourceName: { es: 'Gracia a Vosotros', en: 'Grace to You en Español' },
         sourceLabel: { es: 'Abrir predica', en: 'Open sermon' },
         fallbackTitle: { es: 'Nueva predica disponible', en: 'New sermon available' },
         fallbackBody: {
-          es: 'Se encontro una ensenanza reciente para escuchar o leer hoy.',
+          es: 'Una nueva ensenanza biblica en espanol esta disponible para escuchar hoy.',
           en: 'A recent teaching is available to read or listen to today.',
-        },
-      },
-      {
-        id: 'lifechurch-youtube',
-        url: 'https://www.youtube.com/feeds/videos.xml?user=LifeChurchTV',
-        accent: 'blue',
-        sourceName: { es: 'Life.Church', en: 'Life.Church' },
-        sourceLabel: { es: 'Abrir predica', en: 'Open sermon' },
-        fallbackTitle: { es: 'Nueva predica disponible', en: 'New sermon available' },
-        fallbackBody: {
-          es: 'Hay una predica reciente lista para acompanar la lectura de hoy.',
-          en: 'A recent sermon is ready to accompany today\'s reading.',
-        },
-      },
-      {
-        id: 'tony-evans-youtube',
-        url: 'https://www.youtube.com/feeds/videos.xml?user=drtonyevans',
-        accent: 'gold',
-        sourceName: { es: 'Tony Evans', en: 'Tony Evans' },
-        sourceLabel: { es: 'Abrir predica', en: 'Open sermon' },
-        fallbackTitle: { es: 'Nueva predica disponible', en: 'New sermon available' },
-        fallbackBody: {
-          es: 'Se encontro un nuevo mensaje para reforzar la aplicacion biblica del dia.',
-          en: 'A new message was found to deepen the day\'s biblical application.',
         },
       },
     ],
@@ -283,44 +271,19 @@ const FEED_SOURCES: Record<RemoteSectionKey, Partial<Record<AppLanguage, FeedSou
   testimonies: {
     es: [
       {
-        id: 'aleteia-es-testimony',
-        url: 'https://es.aleteia.org/feed/',
+        id: 'testimonios-paco-palafox',
+        url: 'https://www.omnycontent.com/d/playlist/a586ab2b-f2d1-4bc7-abd8-affd00c083a1/0bb3fb25-f911-4984-8d82-b1c3013be8e5/9de40743-f778-40d6-8f1d-b1c3013d566b/podcast.rss',
         accent: 'rose',
-        sourceName: { es: 'Aleteia', en: 'Aleteia' },
-        sourceLabel: { es: 'Abrir historia', en: 'Open story' },
-        fallbackTitle: { es: 'Nuevo testimonio disponible', en: 'Fresh testimony available' },
+        sourceName: { es: 'Buena Nueva · Testimonios con Paco Palafox', en: 'Buena Nueva · Testimonies with Paco Palafox' },
+        sourceLabel: { es: 'Escuchar testimonio', en: 'Listen to testimony' },
+        fallbackTitle: { es: 'Nuevo testimonio de fe', en: 'New faith testimony' },
         fallbackBody: {
-          es: 'Se encontro una historia reciente para fortalecer la fe en el dia a dia.',
-          en: 'A recent story was found to strengthen faith in everyday life.',
-        },
-      },
-      {
-        id: 'guideposts-stories',
-        url: 'https://guideposts.org/feed/',
-        accent: 'rose',
-        sourceName: { es: 'Guideposts', en: 'Guideposts' },
-        sourceLabel: { es: 'Abrir historia', en: 'Open story' },
-        fallbackTitle: { es: 'Nuevo testimonio disponible', en: 'Fresh testimony available' },
-        fallbackBody: {
-          es: 'Se encontro una historia reciente de fe y restauracion.',
-          en: 'A recent story of faith and restoration was found.',
+          es: 'Una historia real compartida en el podcast Testimonios con Paco Palafox.',
+          en: 'A real story shared on the Testimonios con Paco Palafox podcast.',
         },
       },
     ],
-    en: [
-      {
-        id: 'guideposts-stories',
-        url: 'https://guideposts.org/feed/',
-        accent: 'rose',
-        sourceName: { es: 'Guideposts', en: 'Guideposts' },
-        sourceLabel: { es: 'Abrir historia', en: 'Open story' },
-        fallbackTitle: { es: 'Nuevo testimonio disponible', en: 'Fresh testimony available' },
-        fallbackBody: {
-          es: 'Se encontro una historia reciente de fe y restauracion.',
-          en: 'A recent story of faith and restoration was found.',
-        },
-      },
-    ],
+    en: [],
   },
 };
 
@@ -359,11 +322,14 @@ function truncateText(input: string, maxLength: number) {
 }
 
 function sanitizeId(input: string) {
-  return input
+  const prefix = input
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
+    .slice(0, 60)
+    .replace(/-+$/g, '');
+  const suffix = createHash('sha256').update(input).digest('hex').slice(0, 12);
+  return `${prefix}-${suffix}`;
 }
 
 function extractFirstImageUrl(input?: string) {
@@ -399,7 +365,7 @@ async function fetchFeedItems(source: FeedSource) {
   return parsed.items ?? [];
 }
 
-function buildRemoteCard(language: AppLanguage, source: FeedSource, item: RemoteFeedItem): RemoteCardCandidate | null {
+function buildRemoteCard(language: AppLanguage, source: FeedSource, item: RemoteFeedItem, sectionKey: RemoteSectionKey): RemoteCardCandidate | null {
   const sourceUrl = item.link?.trim();
   if (!sourceUrl) {
     return null;
@@ -411,12 +377,14 @@ function buildRemoteCard(language: AppLanguage, source: FeedSource, item: Remote
     ? Date.parse(item.isoDate || item.pubDate || '')
     : 0;
   const imageUrl = item.enclosure?.url || extractFirstImageUrl(item['content:encoded']) || extractFirstImageUrl(item.content) || extractFirstImageUrl(item.summary);
+  const enclosureIsImage = item.enclosure?.type?.startsWith('image/')
+    || Boolean(item.enclosure?.url && /\.(?:jpg|jpeg|png|webp)(?:[?#]|$)/i.test(item.enclosure.url));
 
   return {
     id: sanitizeId(`${source.id}-${item.guid || sourceUrl || itemTitle}`) || `${source.id}-${publishedAt}`,
     title: truncateText(itemTitle || source.fallbackTitle[language], 96),
-    body: truncateText(snippet || source.fallbackBody[language], 180),
-    imageUrl,
+    body: truncateText(language === 'es' && sectionKey === 'sermons' ? source.fallbackBody.es : snippet || source.fallbackBody[language], 180),
+    imageUrl: (enclosureIsImage ? imageUrl : undefined) || extractFirstImageUrl(item['content:encoded']) || extractFirstImageUrl(item.content) || extractFirstImageUrl(item.summary) || source.imageUrl,
     imageAlt: itemTitle || source.fallbackTitle[language],
     sourceName: source.sourceName[language],
     sourceUrl,
@@ -441,7 +409,10 @@ function dedupeAndTrim(cards: RemoteCardCandidate[], limit: number) {
       return true;
     })
     .slice(0, limit)
-    .map(({ publishedAt: _publishedAt, ...card }) => card);
+    .map(({ publishedAt, ...card }) => ({
+      ...card,
+      publishedAt: publishedAt > 0 ? new Date(publishedAt).toISOString() : undefined,
+    }));
 }
 
 async function fetchSectionCards(language: AppLanguage, sectionKey: RemoteSectionKey) {
@@ -454,7 +425,7 @@ async function fetchSectionCards(language: AppLanguage, sectionKey: RemoteSectio
     try {
       const items = await fetchFeedItems(source);
       return items
-        .map((item) => buildRemoteCard(language, source, item))
+        .map((item) => buildRemoteCard(language, source, item, sectionKey))
         .filter((card): card is RemoteCardCandidate => Boolean(card));
     } catch (error) {
       console.error(`Daily content feed error for ${sectionKey}/${source.id}:`, error);
@@ -462,7 +433,8 @@ async function fetchSectionCards(language: AppLanguage, sectionKey: RemoteSectio
     }
   }));
 
-  return dedupeAndTrim(cards.flat(), SECTION_LIMIT);
+  const minimumPublishedAt = Date.now() - MAX_ITEM_AGE_MS[sectionKey];
+  return dedupeAndTrim(cards.flat().filter((card) => card.publishedAt >= minimumPublishedAt), SECTION_LIMIT);
 }
 
 async function buildRemoteDailyContent(language: AppLanguage): Promise<RemoteDailyContentResponse> {

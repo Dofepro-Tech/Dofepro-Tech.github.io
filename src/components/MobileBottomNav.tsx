@@ -1,7 +1,10 @@
-import { Github, Globe, Linkedin } from 'lucide-react';
+import { ArrowUp, Github, Globe, Linkedin, MessageCircle, Target, Eye, Star, FileText, Shield } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { type AboutLegalType } from '@/src/components/AboutLegalModal';
 import { BrandSeal } from '@/src/components/BrandSeal';
 import { cn } from '@/src/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 export interface MobileBottomNavItem {
   id: string;
@@ -18,9 +21,16 @@ interface MobileBottomNavProps {
 
 interface MobilePageFooterProps {
   className?: string;
+  onOpenAboutLegal?: (type: AboutLegalType) => void;
+  onOpenOpinions?: () => void;
+  onOpenDictionary?: () => void;
 }
 
 const SUPPORT_EMAIL = 'dofeprotech@gmail.com';
+const SUPPORT_WHATSAPP_URL = 'https://wa.me/18492618830?text=Hola%2C%20quiero%20informacion%20sobre%20Biblia%20DJ.';
+const WEBSITE_URL = 'https://dofepro.do';
+const GITHUB_URL = 'https://github.com/dofepro';
+const LINKEDIN_URL = 'https://www.linkedin.com/in/domingo-feliz-dofepro-tech';
 
 function getScrollParent(element: HTMLElement | null): HTMLElement | Window {
   let current = element?.parentElement ?? null;
@@ -100,7 +110,7 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
           <button
             key={item.id}
             type="button"
-            onClick={item.onClick}
+            onClick={() => item.onClick()}
             className={cn(
               'relative flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[20px] px-0.5 py-1.5 transition-all',
               item.active
@@ -115,14 +125,14 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
               className={cn(
                 'flex h-8 w-8 items-center justify-center rounded-2xl transition-all sm:h-9 sm:w-9',
                 item.active
-                  ? 'bg-[#165bb8] text-white shadow-[0_10px_22px_rgba(22,91,184,0.35)]'
+                  ? 'bg-[var(--primary)] text-white shadow-[0_10px_22px_rgba(var(--primary-rgb),0.35)]'
                   : 'text-inherit'
               )}
             >
               {item.icon}
             </span>
             <span className="max-w-full truncate text-center font-sans text-[9px] font-medium leading-none text-inherit sm:text-[10px]">{item.label}</span>
-            {item.active ? <span className="absolute left-1/2 top-0 h-0.5 w-6 -translate-x-1/2 rounded-full bg-[#f0c15c] sm:w-8" /> : null}
+            {item.active ? <span className="absolute left-1/2 top-0 h-0.5 w-6 -translate-x-1/2 rounded-full bg-[var(--primary)] sm:w-8" /> : null}
           </button>
         ))}
       </div>
@@ -130,24 +140,107 @@ export function MobileBottomNav({ items, className }: MobileBottomNavProps) {
   );
 }
 
-export function MobilePageFooter({ className }: MobilePageFooterProps) {
+export function MobilePageFooter({ className, onOpenAboutLegal, onOpenOpinions, onOpenDictionary }: MobilePageFooterProps) {
+  const { t } = useTranslation();
+
   return (
-    <footer className={cn('w-full px-4 py-1.5 text-white/68', className)}>
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center font-sans text-[10px] font-medium leading-4 lg:text-[11px]">
-        <BrandSeal className="h-4 w-4 shrink-0 opacity-85" showWordmark={false} />
-        <span>© 2026 Dofepro-Tech</span>
-        <span className="text-white/30">·</span>
-        <a
-          href={`mailto:${SUPPORT_EMAIL}`}
-          className="break-all text-inherit underline-offset-2 transition-colors hover:text-white hover:underline"
-        >
-          {SUPPORT_EMAIL}
-        </a>
-        <span className="text-white/30">·</span>
-        <a href="https://dofepro-tech.github.io/Mi-Portafolio/" aria-label="Portafolio de Dofepro" title="Portafolio de Dofepro" className="inline-flex h-6 w-6 items-center justify-center text-inherit transition-colors hover:text-white"><Globe className="h-4 w-4" /></a>
-        <a href="https://github.com/dofepro" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub" className="inline-flex h-6 w-6 items-center justify-center text-inherit transition-colors hover:text-white"><Github className="h-4 w-4" /></a>
-        <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn" className="inline-flex h-6 w-6 items-center justify-center text-inherit transition-colors hover:text-white"><Linkedin className="h-4 w-4" /></a>
+    <footer className={cn('w-full mt-auto pt-10 pb-28 lg:pb-8', className)}>
+      <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center gap-6 px-6 text-center">
+        <div className="mb-1 h-px w-full max-w-4xl" style={{ background: 'linear-gradient(90deg, transparent, rgba(var(--primary-rgb), .45), transparent)' }} />
+
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 font-sans text-[10px] font-bold uppercase tracking-widest text-white/40">
+          <button onClick={() => onOpenAboutLegal?.('about')} className="hover:text-[var(--primary)] transition-colors">{t('menu.about')}</button>
+          <button onClick={() => onOpenAboutLegal?.('mission')} className="hover:text-[var(--primary)] transition-colors">{t('menu.mission')}</button>
+          <button onClick={() => onOpenAboutLegal?.('vision')} className="hover:text-[var(--primary)] transition-colors">{t('menu.vision')}</button>
+          <button onClick={() => onOpenAboutLegal?.('values')} className="hover:text-[var(--primary)] transition-colors">{t('menu.values')}</button>
+          <button onClick={() => onOpenOpinions?.()} className="hover:text-[var(--primary)] transition-colors">Opiniones</button>
+          <button onClick={() => onOpenDictionary?.()} className="hover:text-[var(--primary)] transition-colors">Diccionario</button>
+          <button onClick={() => onOpenAboutLegal?.('terms')} className="hover:text-[var(--primary)] transition-colors">{t('menu.terms')}</button>
+          <button onClick={() => onOpenAboutLegal?.('privacy')} className="hover:text-[var(--primary)] transition-colors">{t('menu.privacy')}</button>
+        </div>
+
+        <div className="max-w-xl text-center">
+          <p className="font-serif text-sm italic text-ink-light/80">Haciéndolo de corazón, como para el Señor.</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-olive/60">Colosenses 3:23</p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-sans text-[10px] font-medium tracking-wide text-white/30">
+          <span className="text-white/40">© 2026 DOFEPRO-TECH</span>
+          <span className="hidden sm:inline opacity-20">•</span>
+
+          <div className="flex items-center gap-3">
+            <a
+              href={SUPPORT_WHATSAPP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.2 transition-colors hover:text-[var(--primary)]"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>WhatsApp</span>
+            </a>
+            <span className="opacity-20">•</span>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="flex items-center gap-1.2 transition-colors hover:text-white"
+            >
+              <span>{SUPPORT_EMAIL}</span>
+            </a>
+          </div>
+
+          <span className="hidden sm:inline opacity-20">•</span>
+
+          <div className="flex items-center gap-3">
+            <a href={WEBSITE_URL} target="_blank" rel="noreferrer" title="Website" className="transition-all text-[var(--primary)] opacity-60 hover:opacity-100">
+              <Globe className="h-3.5 w-3.5" />
+            </a>
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer" title="GitHub" className="transition-all text-[var(--primary)] opacity-60 hover:opacity-100">
+              <Github className="h-3.5 w-3.5" />
+            </a>
+            <a href={LINKEDIN_URL} target="_blank" rel="noreferrer" title="LinkedIn" className="transition-all text-[var(--primary)] opacity-60 hover:opacity-100">
+              <Linkedin className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </div>
       </div>
     </footer>
+  );
+}
+
+export function ScrollToTopButton({ targetSelector, label = 'Volver arriba' }: { targetSelector: string; label?: string }) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const target = document.querySelector<HTMLElement>(targetSelector);
+    if (!target) return;
+
+    const updateVisibility = () => setIsVisible(target.scrollTop > 360);
+    updateVisibility();
+    target.addEventListener('scroll', updateVisibility, { passive: true });
+    return () => target.removeEventListener('scroll', updateVisibility);
+  }, [targetSelector]);
+
+  const scrollToTop = () => {
+    document.querySelector<HTMLElement>(targetSelector)?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, scale: 0.7, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.7, y: 12 }}
+          whileHover={{ scale: 1.08, y: -3 }}
+          whileTap={{ scale: 0.92 }}
+          onClick={scrollToTop}
+          aria-label={label}
+          title={label}
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-3 z-[55] flex h-10 w-10 items-center justify-center rounded-full border border-[var(--primary)]/40 bg-[var(--primary)] text-white shadow-[0_8px_28px_rgba(var(--primary-rgb),0.4)] transition-shadow hover:shadow-[0_12px_34px_rgba(var(--primary-rgb),0.55)] sm:right-4 sm:h-12 sm:w-12 lg:bottom-6"
+        >
+          <ArrowUp className="scroll-top-arrow h-4 w-4 sm:h-5 sm:w-5" />
+        </motion.button>
+      )}
+    </AnimatePresence>
   );
 }

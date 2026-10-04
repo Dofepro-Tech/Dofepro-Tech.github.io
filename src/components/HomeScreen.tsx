@@ -1,51 +1,50 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Book, ReadingChallengeSummary, SidebarBookFilter, Verse } from '@/src/types';
+import { Capacitor } from '@capacitor/core';
+import type { AboutLegalType } from '@/src/components/AboutLegalModal';
+import { Book, Bookmark as BibleBookmark, ReadingChallengeSummary, SidebarBookFilter } from '@/src/types';
 import { type DailyContentKind, type DailyResourceCard } from '@/src/lib/dailyContent';
 import { useDailyContent } from '@/src/hooks/useDailyContent';
 import { normalizeAppLanguage } from '@/src/lib/language';
-import { openExternalUrl } from '@/src/lib/openExternalUrl';
 import { buildVerseShareText, getAppShareUrl, getReaderShareUrl, type SharePayload } from '@/src/lib/share';
 import { canUseSpeechSynthesis, cancelSpeech, speakText } from '@/src/lib/speech';
+import { openExternalUrl } from '@/src/lib/openExternalUrl';
 import { cn } from '@/src/lib/utils';
 import { AppOverflowMenu } from '@/src/components/AppOverflowMenu';
 import { BrandSeal } from '@/src/components/BrandSeal';
-import { MobileBottomNav, MobilePageFooter } from '@/src/components/MobileBottomNav';
+import { MobileBottomNav, MobilePageFooter, ScrollToTopButton } from '@/src/components/MobileBottomNav';
+import { HelpGuideModal } from '@/src/components/HelpGuideModal';
 import { VerseImageShareSheet } from '@/src/components/VerseImageShareSheet';
-import { canNativeShareVerseImage, createVerseImageAsset, downloadVerseImage, nativeShareVerseImage, revokeVerseImageAsset, type VerseImageAsset } from '@/src/lib/shareVerseImage';
+import { canNativeShareVerseImage, createVerseImageAsset, downloadVerseImage, nativeShareVerseImage, revokeVerseImageAsset } from '@/src/lib/shareVerseImage';
 import { fetchChapter } from '@/src/services/bibleApi';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, BookHeart, BookOpen, Bookmark, Calendar, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Flame, Gamepad2, Heart, House, Image, LibraryBig, Menu, Moon, Newspaper, PlayCircle, Quote, Search, Share2, Sparkles, Star, Sun, SunMoon, User, Volume2, X } from 'lucide-react';
+import { BookHeart, BookOpen, Bookmark, Calendar, ChevronDown, ChevronLeft, ChevronRight, Download, ExternalLink, Flame, Gamepad2, Heart, House, Image, LibraryBig, Menu, Moon, Newspaper, PlayCircle, Quote, Search, Share2, Sparkles, Star, Sun, SunMoon, User, Volume2, X, HelpCircle } from 'lucide-react';
 
 const SAVED_DAILY_IMAGE_STORAGE_KEY = 'biblia_nj_saved_daily_images_v1';
 
 function readStoredSavedDailyImages() {
-  if (typeof window === 'undefined') {
-    return [] as string[];
-  }
-
+  if (typeof window === 'undefined') return [] as string[];
   try {
     const rawValue = window.localStorage.getItem(SAVED_DAILY_IMAGE_STORAGE_KEY);
-    if (!rawValue) {
-      return [] as string[];
-    }
-
+    if (!rawValue) return [] as string[];
     const parsedValue = JSON.parse(rawValue);
-    return Array.isArray(parsedValue)
-      ? parsedValue.filter((value): value is string => typeof value === 'string')
-      : [];
+    return Array.isArray(parsedValue) ? parsedValue.filter((v): v is string => typeof v === 'string') : [];
   } catch (error) {
     console.error('Error reading saved daily images:', error);
     return [] as string[];
   }
 }
 
+type DailyCompanionKind = DailyContentKind;
+
 interface HomeScreenProps {
+  isNativeApp: boolean;
   books: Book[];
   selectedBook: Book | null;
   selectedChapter: number;
   bookmarksCount: number;
+  bookmarks: BibleBookmark[];
   challengeSummary: ReadingChallengeSummary;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
@@ -55,322 +54,194 @@ interface HomeScreenProps {
   setAccentColor: (color: string) => void;
   voiceURI: string;
   setVoiceURI: (uri: string) => void;
+  keepScreenOn: boolean;
+  setKeepScreenOn: (keep: boolean) => void;
+  startupPage: 'home' | 'reader';
+  setStartupPage: (page: 'home' | 'reader') => void;
+  homeSections: Record<string, boolean>;
+  setHomeSections: (sections: any) => void;
   onShare: () => void;
   onMenuClick: () => void;
-  onOpenBooks: (filter?: SidebarBookFilter) => void;
+  onOpenBooks: (filter?: SidebarBookFilter, andNavigate?: boolean) => void;
+  onOpenBookPicker?: (filter: SidebarBookFilter) => void;
   onContinueReading: () => void;
   onOpenReaderSelector?: () => void;
   onOpenStudy: () => void;
   onOpenDailyExperience: () => void;
   onOpenFavorites: () => void;
   onOpenGame: () => void;
-  onOpenSearch?: () => void;
+  onOpenSearch?: (query?: string) => void;
   onOpenPlans?: () => void;
+  onOpenDownloadModal?: () => void;
+  onOpenOpinions?: () => void;
+  onOpenDictionary?: () => void;
   onOpenUser?: () => void;
+  onOpenAboutLegal?: (type: AboutLegalType) => void;
+  onSelectBook: (book: Book) => void;
+  onSelectChapter: (chapter: number) => void;
   onGoHome?: () => void;
   onOpenVerse: (bookAbrev: string, chapter: number, verseNumber: number) => void;
-  showPortfolioReturn?: boolean;
+  onAddBookmark: (bookAbrev: string, chapter: number, verseNumber?: number, label?: string) => void;
+  onRemoveBookmark: (id: string) => void;
   onShareContent: (payload: SharePayload) => void | Promise<void>;
-  availableAppUpdate?: {
-    version: string;
-    currentVersion: string;
-    publishedAt?: string;
-  } | null;
+  availableAppUpdate?: { version: string; currentVersion: string; publishedAt?: string; notes?: string[]; notesEn?: string[]; } | null;
   onOpenAppUpdate?: () => void;
   onDismissAppUpdate?: () => void;
 }
+
 export function HomeScreen(props: HomeScreenProps) {
   const {
-    books,
-    selectedBook,
-    selectedChapter,
-    bookmarksCount,
-    challengeSummary,
-    isDarkMode,
-    onToggleDarkMode,
-    fontSize,
-    setFontSize,
-    accentColor,
-    setAccentColor,
-    voiceURI,
-    setVoiceURI,
-    onShare,
-    onMenuClick,
-    onOpenBooks,
-    onContinueReading,
-    onOpenReaderSelector,
-    onOpenStudy,
-    onOpenDailyExperience,
-    onOpenFavorites,
-    onOpenGame,
-    onOpenSearch,
-    onOpenPlans,
-    onOpenUser,
-    onGoHome,
-    onOpenVerse,
-    showPortfolioReturn = false,
-    onShareContent,
-    availableAppUpdate,
-    onOpenAppUpdate,
-    onDismissAppUpdate,
+    isNativeApp, books, selectedBook, selectedChapter, bookmarksCount, bookmarks, challengeSummary, isDarkMode,
+    onToggleDarkMode, fontSize, setFontSize, accentColor, setAccentColor, voiceURI, setVoiceURI,
+    keepScreenOn, setKeepScreenOn, startupPage, setStartupPage, homeSections, setHomeSections,
+    onShare, onMenuClick, onOpenBooks, onOpenBookPicker, onContinueReading, onOpenReaderSelector, onOpenStudy,
+    onOpenDailyExperience, onOpenFavorites, onOpenGame, onOpenSearch, onOpenPlans, onOpenDownloadModal, onOpenOpinions, onOpenDictionary, onOpenUser, onOpenAboutLegal,
+    onGoHome, onOpenVerse, onAddBookmark, onRemoveBookmark, onShareContent, availableAppUpdate, onOpenAppUpdate, onDismissAppUpdate,
+    onSelectBook, onSelectChapter,
   } = props;
 
-    const { t, i18n } = useTranslation();
-    const [savedDailyImageIds, setSavedDailyImageIds] = useState<string[]>(() => readStoredSavedDailyImages());
-    const [activeImageResourceId, setActiveImageResourceId] = useState<string | null>(null);
-    const [isMobileViewport, setIsMobileViewport] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 1024));
-    const [isMobileDeferredContentReady, setIsMobileDeferredContentReady] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 1024));
-    const [dailyVerse, setDailyVerse] = useState<any>(null);
-    const [loadingDaily, setLoadingDaily] = useState(true);
-    const [dailyImage, setDailyImage] = useState<string | null>(null);
-    const [sharedImageAsset, setSharedImageAsset] = useState<any>(null);
-    const [sharedImageTitle, setSharedImageTitle] = useState<string>('');
-    const [sharedImageText, setSharedImageText] = useState<string>('');
-    const [openMobileDevotionalId, setOpenMobileDevotionalId] = useState<'reflection' | 'passage' | 'prayer'>('reflection');
-    const [isImageShareSheetOpen, setIsImageShareSheetOpen] = useState(false);
-    const [imageSheetMode, setImageSheetMode] = useState<'preview' | 'share'>('preview');
-    const [isPreparingImageShare, setIsPreparingImageShare] = useState(false);
-    const currentLanguage = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
-    const oldTestamentCount = books.filter((book) => {
-      const testament = book.testament.toLowerCase();
-      return testament.includes('antiguo') || testament.includes('old');
-    }).length;
-    const newTestamentCount = books.length - oldTestamentCount;
-    const resumeLabel = selectedBook
-      ? `${selectedBook.names[0]} ${selectedChapter}`
-      : t('home.open_books_detail');
-    const dailyContent = useDailyContent(currentLanguage);
-    const imageItem = dailyContent.image;
-    const appShareUrl = getAppShareUrl();
-    const preferredDailyVerseNumber = dailyVerse ? (() => {
-      const labelText = String(dailyVerse?.label ?? '');
-      const match = labelText.match(/:(\d+)/);
-      if (match) return parseInt(match[1], 10);
-      return dailyVerse?.verse?.number;
-    })() : undefined;
+  const { t, i18n } = useTranslation();
+  const [savedDailyImageIds, setSavedDailyImageIds] = useState<string[]>(() => readStoredSavedDailyImages());
+  const [activeImageResourceId, setActiveImageResourceId] = useState<string | null>(null);
+  const [activeImageVerseReference, setActiveImageVerseReference] = useState<DailyResourceCard['verseReference'] | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => (typeof window === 'undefined' ? false : window.innerWidth < 1024));
+  const [isMobileDeferredContentReady, setIsMobileDeferredContentReady] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 1024));
+  const [dailyVerse, setDailyVerse] = useState<any>(null);
+  const [loadingDaily, setLoadingDaily] = useState(true);
+  const [dailyImage, setDailyImage] = useState<string | null>(null);
+  const [sharedImageAsset, setSharedImageAsset] = useState<any>(null);
+  const [sharedImageTitle, setSharedImageTitle] = useState<string>('');
+  const [sharedImageText, setSharedImageText] = useState<string>('');
+  const [openMobileDevotionalId, setOpenMobileDevotionalId] = useState<'reflection' | 'passage' | 'prayer'>('reflection');
+  const [isImageShareSheetOpen, setIsImageShareSheetOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [imageSheetMode, setImageSheetMode] = useState<'preview' | 'share'>('preview');
+  const [isPreparingImageShare, setIsPreparingImageShare] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const sectionRefs = {
+    image: useRef<HTMLElement>(null),
+    news: useRef<HTMLElement>(null),
+    video: useRef<HTMLElement>(null),
+    reflection: useRef<HTMLElement>(null),
+    testimony: useRef<HTMLElement>(null),
+  };
 
-    const dailyVerseShareUrl = dailyVerse ? getReaderShareUrl({
-      bookAbrev: dailyVerse.bookAbrev,
-      chapter: dailyVerse.chapter,
-      verseNumber: preferredDailyVerseNumber ?? dailyVerse.verse.number,
-    }) : '';
-    const pageTone = isDarkMode
-      ? 'bg-[#04101f] text-white'
-      : 'bg-[linear-gradient(180deg,#eef5ff_0%,#f7fbff_44%,#f5f5f0_100%)] text-[#102542]';
-    const headerTone = isDarkMode
-      ? 'border-white/10 bg-[#07172e]/92'
-      : 'border-[#cfe0f2] bg-white/92';
-    const headerButtonTone = isDarkMode
-      ? 'border-white/10 bg-white/5 text-white hover:border-[#4fa8ff]/40 hover:bg-[#10284f]'
-      : 'border-[#d4e2f1] bg-white text-[#153153] hover:border-[#4fa8ff]/35 hover:bg-[#edf5ff]';
-    const headerBadgeTone = isDarkMode ? 'text-[#87bfff]' : 'text-[#4d7bb3]';
-    const headerTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
-    const footerHintTone = isDarkMode ? 'text-[#8fb6de]' : 'text-[#587392]';
-    const desktopSectionTone = isDarkMode
-      ? 'border-white/10 bg-[#07162b] text-white shadow-[0_18px_60px_rgba(0,0,0,0.22)]'
-      : 'border-[#d8e6f4] bg-[linear-gradient(180deg,#ffffff_0%,#f6fbff_100%)] text-[#102542] shadow-[0_18px_50px_rgba(36,74,116,0.12)]';
-    const desktopSectionBadgeTone = isDarkMode ? 'text-[#7fb8ff]' : 'text-[#4d7bb3]';
-    const desktopSectionTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
-    const desktopSectionBodyTone = isDarkMode ? 'text-[#cfe2ff]' : 'text-[#4f6988]';
-    const desktopChipTone = isDarkMode
-      ? 'border-white/10 bg-white/5 text-[#d6e9ff]'
-      : 'border-[#d4e2f1] bg-[#f2f8ff] text-[#153153]';
-    const mobileCopy = currentLanguage === 'en'
-      ? {
-          devotional: 'Today\'s devotion',
-          listen: 'Listen',
-          read: 'Read',
-          passage: 'Passage of the day',
-          prayer: 'Prayer of the day',
-          images: 'Images of the day',
-          sermons: 'Sermons of the day',
-          news: 'News of today',
-          videos: 'Videos of the day',
-          reflections: 'Reflections of the day',
-          testimonies: 'Testimonies of the day',
-          versesSection: 'Verse of the day',
-          minRead: '4 min',
-          chapterTab: 'Chapter',
-          verseTab: 'Verse',
-        }
-      : {
-          devotional: 'Devocional de hoy',
-          listen: 'Escuchar',
-          read: 'Leer',
-          passage: 'Pasaje del día',
-          prayer: 'Oración del día',
-          images: 'Imágenes del día',
-          sermons: 'Prédicas del día',
-          news: 'Noticias de hoy',
-          videos: 'Videos del día',
-          reflections: 'Reflexiones del día',
-          testimonies: 'Testimonios de día',
-          versesSection: 'Versículo del día',
-          minRead: '4 min',
-          chapterTab: 'Capítulo',
-          verseTab: 'Versículo',
-        };
-    const companionSections = dailyContent.sections.map((section) => ({
-        ...section,
-        title: getDailyCompanionSectionTitle(section.kind, mobileCopy),
-        label: getDailyCompanionLabel(section.kind, t),
-      }));
-    const visibleMobileCompanionSections = isMobileDeferredContentReady
-      ? companionSections
-      : companionSections.slice(0, 2);
-    const canListenReflection = canUseSpeechSynthesis();
-    const verseReferenceLabel = dailyVerse ? dailyVerse.label : '';
+  const scrollToSection = (kind: keyof typeof sectionRefs) => {
+    sectionRefs[kind]?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
-    // Cargar versículo e imagen diarios de forma asíncrona
-    useEffect(() => {
-      let mounted = true;
-      async function loadDaily() {
-        setLoadingDaily(true);
-        try {
-          const { getDailyVerseWithImage } = await import('@/src/lib/dailyVerse');
-          const result = await getDailyVerseWithImage(currentLanguage);
-          if (mounted) {
-            // Soporta ambos formatos: result.dailyVerse o el objeto directo
-            setDailyVerse(result);
-            setDailyImage(result.imageUrl || null);
-          }
-        } catch (e) {
-          if (mounted) {
-            setDailyVerse(null);
-            setDailyImage(null);
-          }
-        } finally {
-          if (mounted) setLoadingDaily(false);
-        }
-      }
-      loadDaily();
-      return () => { mounted = false; };
-    }, [currentLanguage]);
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (searchQuery.trim() && onOpenSearch) {
+      onOpenSearch(searchQuery.trim());
+    }
+  };
+  const currentLanguage = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
 
+  const oldTestamentCount = books.filter(b => b.testament.toLowerCase().includes('antiguo') || b.testament.toLowerCase().includes('old')).length;
+  const newTestamentCount = books.length - oldTestamentCount;
+  const resumeLabel = selectedBook ? `${selectedBook.names[0]} ${selectedChapter}` : t('home.open_books_detail');
+  const dailyContent = useDailyContent(currentLanguage);
+  const appShareUrl = getAppShareUrl();
+
+  const preferredDailyVerseNumber = dailyVerse ? (() => {
+    const labelText = String(dailyVerse?.label ?? '');
+    const match = labelText.match(/:(\d+)/);
+    return match ? parseInt(match[1], 10) : dailyVerse?.verse?.number;
+  })() : undefined;
+
+  const dailyVerseShareUrl = dailyVerse ? getReaderShareUrl({
+    bookAbrev: dailyVerse.bookAbrev,
+    chapter: dailyVerse.chapter,
+    verseNumber: preferredDailyVerseNumber ?? dailyVerse.verse.number,
+  }) : '';
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
+    let mounted = true;
+    async function loadDaily() {
+      setLoadingDaily(true);
+      try {
+        const { getDailyVerseWithImage } = await import('@/src/lib/dailyVerse');
+        const result = await getDailyVerseWithImage(currentLanguage);
+        if (mounted) {
+          setDailyVerse(result);
+          setDailyImage(result.imageUrl || null);
+        }
+      } catch (e) {
+        if (mounted) { setDailyVerse(null); setDailyImage(null); }
+      } finally {
+        if (mounted) setLoadingDaily(false);
+      }
     }
+    loadDaily();
+    return () => { mounted = false; };
+  }, [currentLanguage]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     const updateViewport = () => {
       const nextIsMobile = window.innerWidth < 1024;
       setIsMobileViewport(nextIsMobile);
-
-      if (!nextIsMobile) {
-        setIsMobileDeferredContentReady(true);
-      }
+      if (!nextIsMobile) setIsMobileDeferredContentReady(true);
     };
-
-    updateViewport();
     window.addEventListener('resize', updateViewport);
+    updateViewport();
     return () => window.removeEventListener('resize', updateViewport);
   }, []);
 
   useEffect(() => {
-    if (!isMobileViewport) {
-      setIsMobileDeferredContentReady(true);
-      return undefined;
-    }
-
+    if (!isMobileViewport) { setIsMobileDeferredContentReady(true); return; }
     setIsMobileDeferredContentReady(false);
-
     let cancelled = false;
-    const revealDeferredContent = () => {
-      if (cancelled) {
-        return;
-      }
-
-      startTransition(() => {
-        setIsMobileDeferredContentReady(true);
-      });
+    const reveal = () => {
+      if (cancelled) return;
+      startTransition(() => setIsMobileDeferredContentReady(true));
     };
+    const handle = typeof window.requestIdleCallback === 'function'
+      ? window.requestIdleCallback(reveal, { timeout: 900 })
+      : window.setTimeout(reveal, 420);
+    return () => { cancelled = true; typeof handle === 'number' ? window.clearTimeout(handle) : window.cancelIdleCallback?.(handle); };
+  }, [isMobileViewport]);
 
-    const idleHandle = typeof window.requestIdleCallback === 'function'
-      ? window.requestIdleCallback(revealDeferredContent, { timeout: 900 })
-      : window.setTimeout(revealDeferredContent, 420);
-
-    return () => {
-      cancelled = true;
-
-      if (typeof idleHandle === 'number') {
-        window.clearTimeout(idleHandle);
-        return;
-      }
-
-      window.cancelIdleCallback?.(idleHandle);
-    };
-  }, [dailyContent, isMobileViewport]);
+  useEffect(() => () => revokeVerseImageAsset(sharedImageAsset), [sharedImageAsset]);
 
   useEffect(() => {
-    return () => {
-      revokeVerseImageAsset(sharedImageAsset);
-    };
-  }, [sharedImageAsset]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    window.localStorage.setItem(SAVED_DAILY_IMAGE_STORAGE_KEY, JSON.stringify(savedDailyImageIds));
+    if (typeof window !== 'undefined') window.localStorage.setItem(SAVED_DAILY_IMAGE_STORAGE_KEY, JSON.stringify(savedDailyImageIds));
   }, [savedDailyImageIds]);
 
   const handleScrollToTop = () => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-
     const root = document.querySelector<HTMLElement>('[data-home-scroll-root="true"]');
     root?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const mobileNavItems = [
-    {
-      id: 'home',
-      label: t('app.home'),
-      icon: <House className="h-5 w-5" />,
-      onClick: handleScrollToTop,
-      active: true,
-    },
-    {
-      id: 'reader',
-      label: t('menu.books'),
-      icon: <BookOpen className="h-5 w-5" />,
-      onClick: onOpenReaderSelector ?? onContinueReading,
-    },
-  ];
+  const handleHomeClick = () => {
+    if (onGoHome) {
+      onGoHome();
+    }
+    handleScrollToTop();
+  };
 
+  const mobileNavItems = [
+    { id: 'home', label: t('app.home'), icon: <House className="h-5 w-5" />, onClick: handleHomeClick, active: true },
+    { id: 'reader', label: t('menu.books'), icon: <BookOpen className="h-5 w-5" />, onClick: onOpenReaderSelector ?? onContinueReading },
+    { id: 'search', label: t('menu.search'), icon: <Search className="h-5 w-5" />, onClick: onOpenSearch ?? (() => {}) },
+    { id: 'user', label: t('menu.user'), icon: <User className="h-5 w-5" />, onClick: onOpenUser ?? (() => {}) },
+    { id: 'game', label: t('menu.game'), icon: <Gamepad2 className="h-5 w-5" />, onClick: onOpenGame },
+    { id: 'plans', label: t('menu.plans'), icon: <Calendar className="h-5 w-5" />, onClick: onOpenPlans ?? (() => {}) },
+  ];
 
   const handleCompanionAction = (kind: DailyContentKind, resource: DailyResourceCard) => {
     if (resource.verseReference) {
-      onOpenVerse(
-        resource.verseReference.bookAbrev,
-        resource.verseReference.chapter,
-        resource.verseReference.verseNumber,
-      );
+      onOpenVerse(resource.verseReference.bookAbrev, resource.verseReference.chapter, resource.verseReference.verseNumber);
       return;
     }
-
-    if (kind === 'reflection') {
-      onOpenDailyExperience();
-      return;
-    }
-
-    if (kind === 'image' && resource.id) {
-      setActiveImageResourceId(resource.id);
-      return;
-    }
-
+    if (kind === 'image') { void handleImagePreview(resource); return; }
+    if (resource.sourceUrl) { void openExternalUrl(resource.sourceUrl); return; }
     onOpenDailyExperience();
   };
 
   const handleReflectionListen = () => {
-    if (!canListenReflection) {
-      void handleCompanionAction('reflection', dailyContent.reflection);
-      return;
-    }
-
+    if (!canUseSpeechSynthesis()) { void handleCompanionAction('reflection', dailyContent.reflection); return; }
     cancelSpeech();
     speakText({
       text: [dailyContent.reflection.title, dailyContent.reflection.body, dailyContent.reflection.quote].filter(Boolean).join('. '),
@@ -379,1474 +250,568 @@ export function HomeScreen(props: HomeScreenProps) {
     });
   };
 
+  const mobileCopy = currentLanguage === 'en'
+    ? { devotional: 'Today\'s devotion', listen: 'Listen', read: 'Read', passage: 'Passage of the day', prayer: 'Prayer of the day', images: 'Visual inspiration', sermons: 'Recent sermons', news: 'Recent news', videos: 'Recent videos', reflections: 'Recent reflections', testimonies: 'Faith stories', versesSection: 'Verse of the day', minRead: '4 min' }
+    : { devotional: 'Devocional de hoy', listen: 'Escuchar', read: 'Leer', passage: 'Pasaje del día', prayer: 'Oración del día', images: 'Inspiración visual', sermons: 'Prédicas recientes', news: 'Noticias recientes', videos: 'Videos recientes', reflections: 'Reflexiones recientes', testimonies: 'Historias de fe', versesSection: 'Versículo del día', minRead: '4 min' };
+
   const devotionalItems = [
-    {
-      id: 'reflection' as const,
-      icon: <Quote className="h-4 w-4" />,
-      title: t('app.reflection_of_day'),
-      reference: dailyContent.reflection.verseReference
-        ? dailyContent.reflection.verseReference[currentLanguage === 'en' ? 'labelEn' : 'labelEs']
-        : verseReferenceLabel,
-      detail: mobileCopy.minRead,
-      body: dailyContent.reflection.body,
-      primaryLabel: mobileCopy.listen,
-      primaryAction: handleReflectionListen,
-      secondaryLabel: mobileCopy.read,
-      secondaryAction: () => { void handleCompanionAction('reflection', dailyContent.reflection); },
-    },
-    {
-      id: 'passage' as const,
-      icon: <BookOpen className="h-4 w-4" />,
-      title: mobileCopy.passage,
-      reference: verseReferenceLabel,
-      detail: dailyVerse?.label ?? '',
-      body: dailyVerse?.verse?.verse ?? '',
-      primaryLabel: t('app.challenge_open_passage'),
-      primaryAction: dailyVerse
-        ? () => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, preferredDailyVerseNumber ?? dailyVerse.verse.number)
-        : () => {},
-    },
-    {
-      id: 'prayer' as const,
-      icon: <Sparkles className="h-4 w-4" />,
-      title: mobileCopy.prayer,
-      reference: t('menu.daily_challenges'),
-      detail: `${challengeSummary.completedToday}/${challengeSummary.totalDailyTasks}`,
-      body: currentLanguage === 'en'
-        ? 'Open your daily rhythm and turn today\'s passage into a short prayer.'
-        : 'Abre tu rutina diaria y convierte el pasaje de hoy en una oración breve.',
-      primaryLabel: t('menu.daily_challenges'),
-      primaryAction: onOpenDailyExperience,
-    },
+    { id: 'reflection' as const, icon: <Quote className="h-4 w-4" />, title: t('app.reflection_of_day'), reference: dailyContent.reflection.verseReference ? dailyContent.reflection.verseReference[currentLanguage === 'en' ? 'labelEn' : 'labelEs'] : dailyVerse?.label ?? '', detail: mobileCopy.minRead, body: dailyContent.reflection.body, primaryLabel: mobileCopy.listen, primaryAction: handleReflectionListen, secondaryLabel: mobileCopy.read, secondaryAction: () => { void handleCompanionAction('reflection', dailyContent.reflection); } },
+    { id: 'passage' as const, icon: <BookOpen className="h-4 w-4" />, title: mobileCopy.passage, reference: dailyVerse?.label ?? '', detail: dailyVerse?.label ?? '', body: dailyVerse?.verse?.verse ?? '', primaryLabel: t('app.challenge_open_passage'), primaryAction: dailyVerse ? () => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, preferredDailyVerseNumber ?? dailyVerse.verse.number) : () => {} },
+    { id: 'prayer' as const, icon: <Sparkles className="h-4 w-4" />, title: mobileCopy.prayer, reference: t('menu.daily_challenges'), detail: `${challengeSummary.completedToday}/${challengeSummary.totalDailyTasks}`, body: currentLanguage === 'en' ? 'Open your daily rhythm and turn today\'s passage into a short prayer.' : 'Abre tu rutina diaria y convierte el pasaje de hoy en una oración breve.', primaryLabel: t('menu.daily_challenges'), primaryAction: onOpenDailyExperience },
   ];
-  const renderCompanionCard = (kind: DailyCompanionKind, label: string, resource: DailyResourceCard, compact = false) => {
-    if (kind === 'image') {
-      return (
-        <DailyImageCard
-          key={resource.id}
-          label={label}
-          resource={resource}
-          currentLanguage={currentLanguage}
-          isDarkMode={isDarkMode}
-          isSaved={savedDailyImageIds.includes(resource.id)}
-          onToggleSaved={() => {
-            setSavedDailyImageIds((currentSavedImages) => (
-              currentSavedImages.includes(resource.id)
-                ? currentSavedImages.filter((savedId) => savedId !== resource.id)
-                : [resource.id, ...currentSavedImages]
-            ));
-          }}
-          onOpenImage={() => { void handleImagePreview(resource); }}
-          onOpenVerse={() => {
-            if (resource.verseReference) {
-              onOpenVerse(resource.verseReference.bookAbrev, resource.verseReference.chapter, resource.verseReference.verseNumber);
-            }
-          }}
-          onShare={() => { void handleImageShare(resource); }}
-          compact={compact}
-        />
-      );
-    }
-
-    return (
-      <DailyCompanionCard
-        key={resource.id}
-        kind={kind}
-        label={label}
-        resource={resource}
-        isDarkMode={isDarkMode}
-        onClick={() => { void handleCompanionAction(kind, resource); }}
-        compact={compact}
-      />
-    );
-  };
-
-  const resolveImageVerseText = async (resource: DailyResourceCard) => {
-    const fallbackText = resource.quote ?? resource.body;
-    const verseReference = resource.verseReference;
-
-    if (!verseReference) {
-      return fallbackText;
-    }
-
-    const book = books.find((currentBook) => currentBook.abrev.toUpperCase() === verseReference.bookAbrev.toUpperCase());
-    if (!book) {
-      return fallbackText;
-    }
-
-    try {
-      const chapterData = await fetchChapter(book.names[0], verseReference.chapter, currentLanguage);
-      const verse = chapterData.vers.find((currentVerse) => currentVerse.number === verseReference.verseNumber);
-
-      return verse?.verse?.trim() || fallbackText;
-    } catch (error) {
-      console.error('Error resolving full verse for daily image share:', error);
-      return fallbackText;
-    }
-  };
-
-  const prepareImageAsset = async (resource: DailyResourceCard) => {
-    const referenceLabel = resource.verseReference
-      ? resource.verseReference[currentLanguage === 'en' ? 'labelEn' : 'labelEs']
-      : t('app.image_of_day');
-    const previewText = await resolveImageVerseText(resource);
-    const asset = await createVerseImageAsset({
-      imageUrl: resource.imageUrl,
-      verseText: previewText,
-      reference: referenceLabel,
-      badge: getDailyCompanionLabel('image', t),
-      appName: t('app.title'),
-    });
-
-    if (!asset) {
-      return null;
-    }
-
-    setSharedImageAsset((currentAsset) => {
-      revokeVerseImageAsset(currentAsset);
-      return asset;
-    });
-    setActiveImageResourceId(resource.id);
-    setSharedImageTitle(referenceLabel);
-    setSharedImageText(previewText);
-
-    return { asset, referenceLabel, previewText };
-  };
 
   const handleImagePreview = async (resource: DailyResourceCard) => {
-    if (isPreparingImageShare) {
-      return;
-    }
-
+    if (isPreparingImageShare) return;
     setIsPreparingImageShare(true);
     try {
-      const preparedImage = await prepareImageAsset(resource);
-      if (!preparedImage) {
-        return;
+      const referenceLabel = resource.verseReference ? resource.verseReference[currentLanguage === 'en' ? 'labelEn' : 'labelEs'] : t('app.image_of_day');
+      let previewText = resource.quote ?? resource.body;
+      if (resource.verseReference) {
+        try {
+          const book = books.find(b => b.abrev.toUpperCase() === resource.verseReference?.bookAbrev.toUpperCase());
+          if (book) {
+            const ch = await fetchChapter(book.names[0], resource.verseReference.chapter, currentLanguage);
+            const v = ch.vers.find(vv => vv.number === resource.verseReference?.verseNumber);
+            if (v) previewText = v.verse.trim();
+          }
+        } catch (e) {}
       }
-
+      const asset = await createVerseImageAsset({ imageUrl: resource.imageUrl, verseText: previewText, reference: referenceLabel, badge: getDailyCompanionLabel('image', t), appName: t('app.title') });
+      if (!asset) return;
+      setSharedImageAsset((curr: any) => { revokeVerseImageAsset(curr); return asset; });
+      setActiveImageResourceId(resource.id);
+      setActiveImageVerseReference(resource.verseReference ?? null);
+      setSharedImageTitle(referenceLabel);
+      setSharedImageText(previewText);
       setImageSheetMode('preview');
       setIsImageShareSheetOpen(true);
-    } finally {
-      setIsPreparingImageShare(false);
-    }
-  };
-
-  const handleImageShare = async (resource: DailyResourceCard) => {
-    if (isPreparingImageShare) {
-      return;
-    }
-
-    setIsPreparingImageShare(true);
-    try {
-      const preparedImage = await prepareImageAsset(resource);
-      if (!preparedImage) {
-        return;
-      }
-
-      if (canNativeShareVerseImage(preparedImage.asset)) {
-        const shareResult = await nativeShareVerseImage(
-          preparedImage.asset,
-          preparedImage.referenceLabel,
-        );
-
-        if (shareResult !== 'unsupported') {
-          setIsImageShareSheetOpen(false);
-          return;
-        }
-      }
-
-      setImageSheetMode('share');
-      setIsImageShareSheetOpen(true);
-    } finally {
-      setIsPreparingImageShare(false);
-    }
-  };
-
-  const handleNativeShareImage = async () => {
-    if (!sharedImageAsset) {
-      return;
-    }
-
-    if (!canNativeShareVerseImage(sharedImageAsset)) {
-      setImageSheetMode('share');
-      return;
-    }
-
-    const shareResult = await nativeShareVerseImage(
-      sharedImageAsset,
-      sharedImageTitle,
-    );
-
-    if (shareResult === 'shared') {
-      setIsImageShareSheetOpen(false);
-    }
-  };
-
-  const handleDownloadImage = async () => {
-    if (!sharedImageAsset) {
-      return;
-    }
-
-    const result = await downloadVerseImage(sharedImageAsset);
-
-    if (result.status === 'saved') {
-      window.alert(
-        currentLanguage === 'en'
-          ? 'Image saved on this device.'
-          : 'Imagen guardada en este dispositivo.'
-      );
-      return;
-    }
-
-    if (result.status === 'failed') {
-      window.alert(
-        currentLanguage === 'en'
-          ? 'The image could not be saved on this device.'
-          : 'No se pudo guardar la imagen en este dispositivo.'
-      );
-    }
-  };
-
-  const handleToggleActiveImageSaved = () => {
-    if (!activeImageResourceId) {
-      return;
-    }
-
-    setSavedDailyImageIds((currentSavedImages) => (
-      currentSavedImages.includes(activeImageResourceId)
-        ? currentSavedImages.filter((savedId) => savedId !== activeImageResourceId)
-        : [activeImageResourceId, ...currentSavedImages]
-    ));
+    } finally { setIsPreparingImageShare(false); }
   };
 
   const handleShareDailyVerse = async () => {
-    if (!dailyVerse) {
-      return;
-    }
-
-    const shareText = buildVerseShareText({
-      reference: dailyVerse.label,
-      verseText: dailyVerse.verse.verse,
-      shareUrl: dailyVerseShareUrl,
-    });
-
-    await onShareContent({
-      title: dailyVerse.label,
-      text: shareText,
-      url: dailyVerseShareUrl,
-    });
+    if (!dailyVerse) return;
+    const shareText = buildVerseShareText({ reference: dailyVerse.label, verseText: dailyVerse.verse.verse, shareUrl: dailyVerseShareUrl });
+    await onShareContent({ title: dailyVerse.label, text: shareText, url: dailyVerseShareUrl });
   };
 
-  const renderAppUpdateNotice = (className?: string) => {
-    if (!availableAppUpdate || !onOpenAppUpdate) {
-      return null;
-    }
-
-    const isEnglish = currentLanguage.startsWith('en');
-    const updateBadge = isEnglish ? 'Update available' : 'Nueva versión disponible';
-    const updateTitle = isEnglish
-      ? `Version ${availableAppUpdate.version} is ready to install.`
-      : `La versión ${availableAppUpdate.version} ya está lista para instalar.`;
-    const updateBody = isEnglish
-      ? `You currently have ${availableAppUpdate.currentVersion}. Open the download page to install the latest APK.`
-      : `Ahora tienes la ${availableAppUpdate.currentVersion}. Abre la descarga para instalar la APK más reciente.`;
-    const updateAction = isEnglish ? 'Download update' : 'Descargar actualización';
-    const dismissLabel = isEnglish ? 'Dismiss update notice' : 'Ocultar aviso de actualización';
-
+  const renderAppUpdateNotice = (cls?: string) => {
+    if (!availableAppUpdate || !onOpenAppUpdate) return null;
+    const isEn = currentLanguage.startsWith('en');
+    const releaseNotes = isEn && availableAppUpdate.notesEn?.length
+      ? availableAppUpdate.notesEn
+      : availableAppUpdate.notes;
     return (
-      <section className={cn('rounded-[26px] border border-[#f3c96f]/35 bg-[linear-gradient(135deg,_rgba(243,201,111,0.14),_rgba(7,21,37,0.94))] p-4 text-white shadow-[0_18px_44px_rgba(0,0,0,0.22)]', className)}>
+      <section className={cn('rounded-[26px] border border-[#f3c96f]/35 bg-[linear-gradient(135deg,_rgba(243,201,111,0.14),_rgba(7,21,37,0.94))] p-4 text-white shadow-[0_18px_44px_rgba(0,0,0,0.22)]', cls)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#f5d991]">{updateBadge}</p>
-            <p className="mt-2 text-sm font-semibold text-white">{updateTitle}</p>
-            <p className="mt-2 text-sm leading-6 text-white/74">{updateBody}</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#f5d991]">{isEn ? 'Update available' : 'Actualización'}</p>
+            <p className="mt-2 text-sm font-semibold text-white">{isEn ? `Version ${availableAppUpdate.version} ready` : `Versión ${availableAppUpdate.version} lista`}</p>
           </div>
-          {onDismissAppUpdate ? (
-            <button
-              type="button"
-              onClick={onDismissAppUpdate}
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-white/72 transition-all hover:bg-white/10 hover:text-white"
-              aria-label={dismissLabel}
-              title={dismissLabel}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          ) : null}
+          {onDismissAppUpdate && (
+            <button onClick={onDismissAppUpdate} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/6 text-white/72 transition-all hover:text-white"><X className="h-4 w-4" /></button>
+          )}
         </div>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={onOpenAppUpdate}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f3c96f] px-5 py-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#13233d] transition-all hover:-translate-y-0.5 hover:bg-[#ffd97c]"
-          >
-            {updateAction}
-            <ExternalLink className="h-4 w-4" />
-          </button>
-        </div>
+        {releaseNotes && releaseNotes.length > 0 && (
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-xs leading-5 text-white/80">
+            {releaseNotes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        )}
+        <button onClick={onOpenAppUpdate} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#f3c96f] px-5 py-3 text-[11px] font-bold uppercase text-[#13233d] transition-all hover:-translate-y-0.5">
+          {isEn ? 'Download' : 'Descargar'} <ExternalLink className="h-4 w-4" />
+        </button>
       </section>
     );
   };
 
-  return (
-    <div data-home-scroll-root="true" className={cn('h-full overflow-y-auto transition-colors duration-300', pageTone)}>
-      <VerseImageShareSheet
-        isOpen={isImageShareSheetOpen}
-        onClose={() => setIsImageShareSheetOpen(false)}
-        onHome={() => {
-          setIsImageShareSheetOpen(false);
-          if (onGoHome) {
-            onGoHome();
-            return;
-          }
+  const WebNavDropdown = ({ label, items, isDarkMode, onClick }: { label: string, items: { label: string, onClick: () => void }[], isDarkMode: boolean, onClick?: () => void }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+      <div
+        className="relative group"
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+      >
+        <button
+          onClick={onClick}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold tracking-wide transition-all",
+            isDarkMode ? "text-white/60 hover:text-white" : "text-[#102542]/60 hover:text-[var(--primary)]"
+          )}
+        >
+          {label}
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-180")} />
+        </button>
 
-          handleScrollToTop();
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute left-0 top-full pt-2 z-[100] min-w-[600px]"
+            >
+              <div className={cn(
+                "rounded-2xl border shadow-2xl overflow-hidden p-6",
+                isDarkMode ? "bg-[#0b1a30] border-white/10" : "bg-white border-slate-200"
+              )}>
+                <p className={cn("text-[10px] font-bold uppercase tracking-[0.2em] mb-4 pb-2 border-b", isDarkMode ? "text-white/30 border-white/5" : "text-slate-400 border-slate-100")}>
+                  {label}
+                </p>
+                <div className="grid grid-cols-3 gap-y-4 gap-x-8">
+                  {items.map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => { item.onClick(); setIsOpen(false); }}
+                      className={cn(
+                        "text-left text-[13px] font-medium transition-colors hover:text-[var(--primary)]",
+                        isDarkMode ? "text-white/70" : "text-slate-600"
+                      )}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const WebNavItem = ({ label, onClick, active, isDarkMode }: { label: string, onClick?: () => void, active?: boolean, isDarkMode?: boolean }) => (
+    <button onClick={onClick} className={cn("px-4 py-2 rounded-xl text-sm font-bold tracking-wide transition-all", isDarkMode ? "text-white/60 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10" : "text-[#102542]/60 hover:text-[var(--primary)] hover:bg-[#102542]/5", active && "text-[var(--primary)]")}>{label}</button>
+  );
+
+  const companionSections = dailyContent.sections.filter(s => s.items.length > 0).map(s => ({ ...s, title: getDailyCompanionSectionTitle(s.kind, mobileCopy), label: getDailyCompanionLabel(s.kind, t) }));
+
+  const renderCompanionCard = (kind: DailyCompanionKind, label: string, resource: DailyResourceCard, compact = false) => {
+    if (kind === 'image') return <DailyImageCard key={resource.id} label={label} resource={resource} currentLanguage={currentLanguage} isDarkMode={isDarkMode} isSaved={savedDailyImageIds.includes(resource.id)} onToggleSaved={() => setSavedDailyImageIds(curr => curr.includes(resource.id) ? curr.filter(id => id !== resource.id) : [resource.id, ...curr])} onOpenImage={() => { void handleImagePreview(resource); }} onOpenVerse={() => resource.verseReference && onOpenVerse(resource.verseReference.bookAbrev, resource.verseReference.chapter, resource.verseReference.verseNumber)} onShare={() => { void handleImagePreview(resource); }} compact={compact} />;
+    return <DailyCompanionCard key={resource.id} kind={kind} label={label} resource={resource} isDarkMode={isDarkMode} onClick={() => { void handleCompanionAction(kind, resource); }} compact={compact} />;
+  };
+
+  return (
+    <div data-home-scroll-root="true" className={cn('h-full overflow-y-auto transition-colors duration-300 flex flex-col', isDarkMode ? 'bg-[#04101f] text-white' : 'bg-[#f7fbff] text-[#102542]')}>
+      <VerseImageShareSheet
+        isOpen={isImageShareSheetOpen} onClose={() => setIsImageShareSheetOpen(false)} onHome={() => { setIsImageShareSheetOpen(false); if (onGoHome) onGoHome(); else handleScrollToTop(); }}
+        mode={imageSheetMode} title={sharedImageTitle} text={sharedImageText} url={appShareUrl} previewUrl={sharedImageAsset?.objectUrl ?? null}
+        canNativeShareImage={sharedImageAsset ? canNativeShareVerseImage(sharedImageAsset) : true}
+        onNativeShareImage={async () => {
+          if (sharedImageAsset) {
+            const shareResult = await nativeShareVerseImage(sharedImageAsset, sharedImageTitle, sharedImageText);
+            if (shareResult === 'unsupported') {
+              setImageSheetMode('share');
+            }
+          } else {
+            setImageSheetMode('share');
+          }
         }}
-        mode={imageSheetMode}
-        title={sharedImageTitle}
-        text={sharedImageText}
-        url={appShareUrl}
-        previewUrl={sharedImageAsset?.objectUrl ?? null}
-        canNativeShareImage={sharedImageAsset ? canNativeShareVerseImage(sharedImageAsset) : false}
-        onNativeShareImage={() => { void handleNativeShareImage(); }}
-        onDownloadImage={handleDownloadImage}
-        isSaved={activeImageResourceId ? savedDailyImageIds.includes(activeImageResourceId) : false}
-        onToggleSaved={handleToggleActiveImageSaved}
-        headerBadge={imageSheetMode === 'preview' ? t('app.image_of_day') : t('app.share_verse_image')}
-        headerTitle={imageSheetMode === 'preview' ? t('share_sheet.preview_title') : t('share_sheet.share_title')}
-        headerSubtitle={imageSheetMode === 'preview' ? t('share_sheet.preview_subtitle') : t('share_sheet.share_subtitle')}
+        onDownloadImage={async () => {
+          if (sharedImageAsset) {
+            await downloadVerseImage(sharedImageAsset);
+          }
+        }}
+        isSaved={activeImageVerseReference
+          ? bookmarks.some((bookmark) => bookmark.bookAbrev.toUpperCase() === activeImageVerseReference.bookAbrev.toUpperCase() && bookmark.chapter === activeImageVerseReference.chapter && bookmark.verseNumber === activeImageVerseReference.verseNumber)
+          : !!activeImageResourceId && savedDailyImageIds.includes(activeImageResourceId)}
+        onToggleSaved={activeImageVerseReference ? () => {
+          const reference = activeImageVerseReference;
+          const favorite = bookmarks.find((bookmark) => bookmark.bookAbrev.toUpperCase() === reference.bookAbrev.toUpperCase() && bookmark.chapter === reference.chapter && bookmark.verseNumber === reference.verseNumber);
+          if (favorite) onRemoveBookmark(favorite.id);
+          else onAddBookmark(reference.bookAbrev, reference.chapter, reference.verseNumber, currentLanguage.startsWith('en') ? reference.labelEn : reference.labelEs);
+        } : activeImageResourceId ? () => setSavedDailyImageIds((current) => current.includes(activeImageResourceId) ? current.filter((id) => id !== activeImageResourceId) : [activeImageResourceId, ...current]) : undefined}
+        onViewInBible={activeImageVerseReference ? () => {
+          const reference = activeImageVerseReference;
+          setIsImageShareSheetOpen(false);
+          onOpenVerse(reference.bookAbrev, reference.chapter, reference.verseNumber);
+        } : undefined}
+        headerBadge={imageSheetMode === 'preview' ? t('app.image_of_day') : t('app.share_verse_image')} headerTitle={imageSheetMode === 'preview' ? t('share_sheet.preview_title') : t('share_sheet.share_title')} headerSubtitle={imageSheetMode === 'preview' ? t('share_sheet.preview_subtitle') : t('share_sheet.share_subtitle')}
       />
-      <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col px-4 pb-24 pt-4 sm:px-6 lg:px-8 lg:pb-0">
-        <div className="lg:hidden">
-          <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-white/10 bg-[#030812]/96 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
+
+      <div className="mx-auto flex flex-col flex-1 w-full max-w-[1600px]">
+        {/* HEADER MOVIL */}
+        <header className="lg:hidden sticky top-0 z-30 border-b border-white/10 bg-[#030812]/96 px-4 py-3 backdrop-blur-xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button onClick={onMenuClick} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white"><Menu className="h-5 w-5" /></button>
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 p-1.5 bg-[#07152b] rounded-2xl border border-[#1d4f96]"><BrandSeal className="h-full w-full" showWordmark={false} /></div>
+              <div className="min-w-0"><p className="truncate font-serif text-xl font-bold leading-none text-white">{t('app.title')}</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#7fb8ff]">RV1960</p></div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {!isNativeApp && !Capacitor.isNativePlatform() && <button onClick={onOpenDownloadModal} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--primary)]/35 bg-[var(--primary)]/15 text-[var(--primary)]" title="Descargar APK" aria-label="Descargar APK"><Download className="h-5 w-5" /></button>}
+            <button onClick={() => setIsHelpModalOpen(true)} className="help-action flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white"><HelpCircle className="h-5 w-5 text-sky-400" /></button>
+          </div>
+        </header>
+
+        {/* HEADER WEB */}
+        <header className={cn('hidden lg:flex sticky top-0 z-50 border-b px-4 xl:px-6 py-2 backdrop-blur-xl transition-colors duration-300', isDarkMode ? 'bg-[#030812]/95 border-white/10' : 'bg-white/95 border-slate-200')}>
+          <div className="mx-auto w-full max-w-[1600px] flex items-center justify-between gap-2 xl:gap-4">
+            <div className="flex items-center gap-3 xl:gap-6">
+              <div className="flex items-center gap-2">
                 <button
-                  type="button"
                   onClick={onMenuClick}
-                  className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white transition-all hover:bg-white/10"
-                  title={t('home.open_menu')}
-                  aria-label={t('home.open_menu')}
+                  className={cn(
+                    "p-2 rounded-xl transition-all",
+                    isDarkMode ? "text-white/60 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10" : "text-slate-500 hover:text-[var(--primary)] hover:bg-[var(--primary)]/5"
+                  )}
+                  title="Abrir menú"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
-
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-[#1d4f96] bg-[#07152b] p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.28)]">
+                <div className="flex items-center gap-2 cursor-pointer group" onClick={handleHomeClick}>
+                  <div className={cn("h-8 w-8 xl:h-9 xl:w-9 p-1 rounded-lg border transition-colors shrink-0", isDarkMode ? "bg-[#07152b] border-[#1d4f96]" : "bg-[#f8fbff] border-blue-200")}>
                     <BrandSeal className="h-full w-full" showWordmark={false} />
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-serif text-[1.45rem] font-bold leading-none text-white">{t('app.title')}</p>
-                    <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-[#7fb8ff]">RV1960</p>
+                  <div className="flex flex-col">
+                    <h1 className={cn('font-serif text-base xl:text-xl font-bold transition-colors whitespace-nowrap overflow-hidden', isDarkMode ? 'text-white' : 'text-slate-900')}>
+                      {t('app.title')}
+                    </h1>
+                    <p className="text-[9px] xl:text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--primary)] leading-none">RV1960</p>
                   </div>
                 </div>
               </div>
-
-              <AppOverflowMenu
-                isDarkMode={isDarkMode}
-                onToggleDarkMode={onToggleDarkMode}
-                fontSize={fontSize}
-                setFontSize={setFontSize}
-                accentColor={accentColor}
-                setAccentColor={setAccentColor}
-                voiceURI={voiceURI}
-                setVoiceURI={setVoiceURI}
-                onOpenBooks={() => onOpenBooks('all')}
-                onOpenStudy={onOpenStudy}
-                onOpenDailyExperience={onOpenDailyExperience}
-                onOpenFavorites={onOpenFavorites}
-                onOpenGame={onOpenGame}
-                onShare={onShare}
-              />
+              <nav className="flex items-center gap-0.5 xl:gap-1">
+                <button
+                  onClick={handleHomeClick}
+                  className={cn(
+                    "help-action p-2 rounded-xl transition-all",
+                    isDarkMode ? "text-white/60 hover:text-[var(--primary)] hover:bg-[var(--primary)]/10" : "text-slate-500 hover:text-[var(--primary)] hover:bg-[var(--primary)]/5"
+                  )}
+                  title="Inicio"
+                >
+                  <House className="h-5 w-5" />
+                </button>
+                <WebNavDropdown
+                  label="Biblia y Estudio"
+                  isDarkMode={isDarkMode}
+                  onClick={() => { if (onOpenBookPicker) onOpenBookPicker('all'); else onOpenBooks('all', true); }}
+                  items={[
+                    { label: 'Toda la Biblia', onClick: () => onOpenBookPicker?.('all') },
+                    { label: 'Antiguo Testamento', onClick: () => onOpenBookPicker?.('old') },
+                    { label: 'Nuevo Testamento', onClick: () => onOpenBookPicker?.('new') },
+                    { label: 'Estudio con IA', onClick: onOpenStudy },
+                    { label: 'Planes de lectura', onClick: onOpenPlans ?? (() => {}) },
+                    { label: 'Diccionario', onClick: onOpenDictionary ?? (() => {}) },
+                  ]}
+                />
+                <WebNavDropdown
+                  label="Noticias"
+                  isDarkMode={isDarkMode}
+                  items={[
+                    { label: 'Noticias de hoy', onClick: () => scrollToSection('news') },
+                    { label: 'Mundo Cristiano', onClick: () => scrollToSection('news') },
+                    { label: 'Israel', onClick: () => scrollToSection('news') },
+                  ]}
+                />
+                <WebNavDropdown
+                  label="Recursos"
+                  isDarkMode={isDarkMode}
+                  items={[
+                    { label: 'Testimonios Cristianos', onClick: () => scrollToSection('testimony') },
+                    { label: 'Imágenes Cristianas', onClick: () => scrollToSection('image') },
+                    { label: 'Predicaciones', onClick: () => scrollToSection('video') },
+                    { label: 'Videos Cristianos', onClick: () => scrollToSection('video') },
+                    { label: 'Reflexiones Cristianas', onClick: () => scrollToSection('reflection') },
+                    { label: 'Aceptar a Jesús', onClick: onOpenDailyExperience },
+                    { label: 'Mapa del sitio', onClick: () => {} },
+                    { label: 'Widgets y plugins', onClick: () => {} },
+                    { label: 'Contáctanos', onClick: () => window.location.assign('mailto:domingofeliztech@gmail.com') },
+                  ]}
+                />
+                <WebNavItem label="Juegos" onClick={onOpenGame} isDarkMode={isDarkMode} />
+              </nav>
             </div>
-          </header>
+            <div className="flex items-center gap-2 xl:gap-4 shrink-0">
+              <WebNavItem label={currentLanguage === 'en' ? 'Opinions' : 'Opiniones'} onClick={onOpenOpinions ?? (() => {})} isDarkMode={isDarkMode} />
 
-          {renderAppUpdateNotice('mb-4')}
+              <button
+                onClick={onOpenUser}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--primary)] text-white text-xs font-bold hover:bg-[var(--primary-hover)] transition-all shadow-lg shadow-blue-500/20"
+              >
+                <User className="h-4 w-4" />
+                <span>Iniciar Sesión</span>
+              </button>
 
-          <section
-            className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0a1220] p-4 text-white shadow-[0_18px_44px_rgba(0,0,0,0.3)]"
-            style={!isMobileViewport || isMobileDeferredContentReady ? imageItem.imageUrl ? {
-              backgroundImage: `linear-gradient(180deg, rgba(3,8,18,0.2) 0%, rgba(3,8,18,0.84) 28%, rgba(3,8,18,0.96) 100%), url(${imageItem.imageUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            } : undefined : undefined}
-          >
-            {loadingDaily ? (
-              <div className="flex items-center justify-center h-32">
-                <span className="text-[#7fb8ff] text-lg font-semibold">Cargando versículo del día...</span>
-              </div>
-            ) : dailyVerse ? (
-              <>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#cfe5ff]">{mobileCopy.versesSection}</p>
-                    <p className="mt-2 text-sm font-semibold text-white/90">{dailyVerse.label}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { void handleShareDailyVerse(); }}
-                    className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-black/20 text-white transition-all hover:bg-black/30"
-                    aria-label={t('menu.share')}
-                    title={t('menu.share')}
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </button>
-                </div>
+              {!isNativeApp && !Capacitor.isNativePlatform() && (
+                <button
+                  type="button"
+                  onClick={onOpenDownloadModal}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--primary)]/35 bg-[var(--primary)]/12 px-3 py-2 text-xs font-bold text-[var(--primary)] transition-all hover:-translate-y-0.5 hover:bg-[var(--primary)]/20"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Descargar APK</span>
+                </button>
+              )}
+
+              <div className="flex items-center gap-1 ml-2">
+                <button
+                  onClick={onToggleDarkMode}
+                  className={cn(
+                    "theme-toggle-action p-2 rounded-xl transition-all",
+                    isDarkMode ? "text-white/50 hover:text-white hover:bg-white/5" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                  )}
+                  title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                >
+                  {isDarkMode ? <Sun className="h-5 w-5 text-amber-300" /> : <Moon className="h-5 w-5 text-rose-400" />}
+                </button>
 
                 <button
                   type="button"
-                  onClick={() => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, preferredDailyVerseNumber ?? dailyVerse.verse.number)}
-                  className="mt-4 max-w-[18rem] text-left font-serif text-[1.35rem] leading-8 text-white transition-opacity hover:opacity-90"
+                  onClick={() => setIsHelpModalOpen(true)}
+                  className={cn(
+                    "p-2 rounded-xl transition-all",
+                    isDarkMode ? "text-white/50 hover:text-white hover:bg-white/5" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                  )}
+                  title="Ayuda"
                 >
-                  {dailyVerse.verse.verse}
+                  <HelpCircle className="help-action-icon h-5 w-5 text-sky-500" />
                 </button>
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-32">
-                <span className="text-[#ff7f7f] text-lg font-semibold">No se pudo cargar el versículo del día</span>
               </div>
-            )}
-          </section>
-
-          <section className="mt-4 rounded-[28px] border border-white/10 bg-[#111820] p-4 text-white shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-lg font-bold text-white">{mobileCopy.devotional}</p>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{challengeSummary.completedToday}/{challengeSummary.totalDailyTasks}</p>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenDailyExperience}
-                className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d7e9ff]"
-              >
-                {t('menu.daily_challenges')}
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {devotionalItems.map((item) => {
-                const isOpen = openMobileDevotionalId === item.id;
-
-                return (
-                  <div key={item.id} className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => setOpenMobileDevotionalId((current) => current === item.id ? 'reflection' : item.id)}
-                      className="flex w-full items-center gap-3 text-left"
-                    >
-                      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[#0f2d52] text-[#78b8ff]">
-                        {item.icon}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-base font-semibold text-white">{item.title}</p>
-                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-white/45">{item.reference}</p>
-                      </div>
-                      <div className="flex items-center gap-2 text-white/45">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">{item.detail}</span>
-                        <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
-                      </div>
-                    </button>
-
-                    {isOpen ? (
-                      <div className="mt-4 rounded-[20px] border border-white/8 bg-[#0c1118] p-4">
-                        <p className="text-sm leading-6 text-white/78">{item.body}</p>
-                        <div className="mt-4 flex gap-3">
-                          <button
-                            type="button"
-                            onClick={item.primaryAction}
-                            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-black px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-white"
-                          >
-                            <Volume2 className="h-4 w-4" />
-                            {item.primaryLabel}
-                          </button>
-                          {item.secondaryAction && item.secondaryLabel ? (
-                            <button
-                              type="button"
-                              onClick={item.secondaryAction}
-                              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-black px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-white"
-                            >
-                              <BookOpen className="h-4 w-4" />
-                              {item.secondaryLabel}
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {visibleMobileCompanionSections.map((section) => (
-            <section
-              key={section.id}
-              className="mt-5"
-              style={{ contentVisibility: 'auto', containIntrinsicSize: '420px' }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[1.35rem] font-bold text-white">{section.title}</p>
-                <ChevronRight className="h-5 w-5 text-white/70" />
-              </div>
-              <HorizontalDragRail className="mt-3 flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x" ariaLabel={section.title}>
-                {section.items.map((resource) => renderCompanionCard(section.kind, section.label, resource, true))}
-              </HorizontalDragRail>
-            </section>
-          ))}
-
-          {!isMobileDeferredContentReady && companionSections.length > visibleMobileCompanionSections.length ? (
-            <section className="mt-5 rounded-[24px] border border-white/10 bg-white/[0.03] px-4 py-5 text-white/68" style={{ contentVisibility: 'auto', containIntrinsicSize: '120px' }}>
-              <p className="text-sm font-semibold">{currentLanguage === 'en' ? 'Loading more sections...' : 'Cargando más secciones...'}</p>
-            </section>
-          ) : null}
-        </div>
-
-        <div className="hidden lg:flex lg:flex-col">
-        <header className={cn('sticky top-0 z-20 mb-6 rounded-[28px] border px-4 py-3 shadow-[0_18px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:px-5', headerTone)}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={onMenuClick}
-                className={cn('flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border transition-all', headerButtonTone)}
-                title={t('home.open_menu')}
-                aria-label={t('home.open_menu')}
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-[20px] border border-[#244b7d]/45 bg-[#061223]/78 p-1.5 shadow-[0_14px_36px_rgba(2,9,22,0.24)] sm:h-16 sm:w-16 sm:rounded-[22px]">
-                  <BrandSeal className="h-full w-full" />
-                </div>
-
-                <div className="min-w-0">
-                  <h1 className={cn('truncate font-serif text-[1.35rem] font-bold sm:text-2xl', headerTitleTone)}>{t('app.title')}</h1>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-1.5 sm:flex-nowrap sm:gap-2">
-              <button
-                type="button"
-                onClick={() => onOpenBooks('all')}
-                className={cn('flex h-10 w-10 items-center justify-center rounded-2xl border transition-all sm:h-11 sm:w-11', headerButtonTone)}
-                title={t('menu.books')}
-                aria-label={t('menu.books')}
-              >
-                <Search className="h-4 w-4" />
-              </button>
-              {showPortfolioReturn ? (
-                <button
-                  type="button"
-                  onClick={() => window.location.assign('https://dofepro-tech.github.io/Mi-Portafolio/')}
-                  className={cn('flex h-10 w-10 items-center justify-center rounded-2xl border transition-all sm:h-11 sm:w-11', headerButtonTone)}
-                  title="Volver al portafolio"
-                  aria-label="Volver al portafolio"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={onToggleDarkMode}
-                className={cn('hidden h-10 w-10 items-center justify-center rounded-2xl border transition-all sm:flex sm:h-11 sm:w-11', headerButtonTone)}
-                title={isDarkMode ? t('settings.change_to_light') : t('settings.change_to_dark')}
-                aria-label={isDarkMode ? t('settings.change_to_light') : t('settings.change_to_dark')}
-              >
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-              <button
-                type="button"
-                onClick={onShare}
-                className={cn('flex h-10 w-10 items-center justify-center rounded-2xl border transition-all sm:h-11 sm:w-11', headerButtonTone)}
-                title={t('menu.share')}
-                aria-label={t('menu.share')}
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={onOpenFavorites}
-                className={cn('hidden h-10 w-10 items-center justify-center rounded-2xl border transition-all lg:flex lg:h-11 lg:w-11', headerButtonTone)}
-                title={t('menu.favorites')}
-                aria-label={t('menu.favorites')}
-              >
-                <Heart className="h-4 w-4" />
-              </button>
-              <AppOverflowMenu
-                isDarkMode={isDarkMode}
-                onToggleDarkMode={onToggleDarkMode}
-                fontSize={fontSize}
-                setFontSize={setFontSize}
-                accentColor={accentColor}
-                setAccentColor={setAccentColor}
-                voiceURI={voiceURI}
-                setVoiceURI={setVoiceURI}
-                onOpenBooks={() => onOpenBooks('all')}
-                onOpenStudy={onOpenStudy}
-                onOpenDailyExperience={onOpenDailyExperience}
-                onOpenFavorites={onOpenFavorites}
-                onOpenGame={onOpenGame}
-                onShare={onShare}
-                buttonClassName="sm:h-11 sm:w-11"
-              />
             </div>
           </div>
         </header>
 
-        {renderAppUpdateNotice('mb-6')}
 
-        <motion.section
-          initial={{ opacity: 0, y: 22 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="relative order-3 mt-6 overflow-hidden rounded-[32px] border border-[#244b7d]/85 bg-[radial-gradient(circle_at_top_left,_rgba(91,182,255,0.28),_transparent_32%),linear-gradient(135deg,_#10264d_0%,_#061123_58%,_#0a1c37_100%)] px-5 py-5 shadow-[0_18px_60px_rgba(3,11,25,0.34)] sm:px-6 sm:py-6"
-        >
-          <div className="absolute -right-10 top-0 h-40 w-40 rounded-full bg-[#67b9ff]/18 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-[#f3c76b]/10 blur-3xl" />
-          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between xl:gap-8">
-            <div className="max-w-2xl">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#95c9ff]">{t('home.hero_badge')}</p>
-              <h2 className="mt-2 max-w-2xl font-serif text-[2rem] font-bold leading-[1.08] text-white sm:text-[2.35rem] xl:text-[2.7rem]">
-                {t('home.hero_title')}
-              </h2>
-              <p className="mt-3 max-w-xl font-sans text-[13px] leading-6 text-[#d2e5ff] sm:text-sm sm:leading-7">
-                {t('home.hero_description')}
-              </p>
-            </div>
-
-            <div className="grid w-full gap-3 sm:grid-cols-2 xl:max-w-[31rem]">
-                <QuickActionCard
-                  icon={<BookOpen className="h-5 w-5" />}
-                  label={t('home.continue_reading')}
-                  detail={resumeLabel}
-                  tone="gold"
-                  onClick={selectedBook ? onContinueReading : () => onOpenBooks('all')}
+        <div className="hidden lg:flex lg:flex-col">
+          <div className="bg-[#0b1a30] py-8 border-b border-white/5">
+            <div className="mx-auto max-w-6xl px-6">
+              <form onSubmit={handleSearchSubmit} className="flex gap-2 p-1 bg-white rounded-lg shadow-xl">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Texto a consultar o Libro Cap:Ver (Ej: Juan 3:16)"
+                  className="flex-1 px-4 py-3 text-slate-800 outline-none font-medium"
                 />
-                <QuickActionCard
-                  icon={<LibraryBig className="h-5 w-5" />}
-                  label={t('menu.books')}
-                  detail={t('home.open_books_detail')}
-                  tone="blue"
-                  onClick={() => onOpenBooks('all')}
-                />
-                <QuickActionCard
-                  icon={<Gamepad2 className="h-5 w-5" />}
-                  label={t('menu.game')}
-                  detail={t('home.game_detail')}
-                  tone="violet"
-                  onClick={onOpenGame}
-                />
-                <QuickActionCard
-                  icon={<Sparkles className="h-5 w-5" />}
-                  label={t('menu.study')}
-                  detail={t('home.study_detail')}
-                  tone="sky"
-                  onClick={onOpenStudy}
-                />
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.08 }}
-          className="order-1 mt-6 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]"
-        >
-          <div className={cn('rounded-[32px] border p-5 sm:p-6', desktopSectionTone)}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className={cn('text-[11px] font-semibold uppercase tracking-[0.32em]', desktopSectionBadgeTone)}>{t('app.verse_for_day')}</p>
-                <h3 className={cn('mt-2 font-serif text-3xl font-bold', desktopSectionTitleTone)}>{dailyVerse?.label ?? t('home.loading_verse')}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenDailyExperience}
-                className={cn('inline-flex items-center gap-2 rounded-full border px-4 py-2 font-sans text-[11px] font-semibold uppercase tracking-[0.22em] transition-all', desktopChipTone, isDarkMode ? 'hover:border-[#7dc3ff] hover:bg-[#16335f]' : 'hover:border-[#7dc3ff] hover:bg-[#eaf4ff]')}
-              >
-                <SunMoon className="h-4 w-4" />
-                {t('menu.daily_challenges')}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={dailyVerse ? () => onOpenVerse(dailyVerse.bookAbrev, dailyVerse.chapter, preferredDailyVerseNumber ?? dailyVerse.verse.number) : undefined}
-              className={cn('mt-5 text-left font-serif text-[22px] leading-9 transition-opacity hover:opacity-90', desktopSectionTitleTone)}
-            >
-              “{dailyVerse?.verse?.verse ?? t('home.loading_verse')}”
-            </button>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onOpenDailyExperience}
-                className={cn('rounded-full border px-5 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.22em] transition-all', desktopChipTone, isDarkMode ? 'hover:border-[#7dc3ff]/50 hover:bg-[#10284f]' : 'hover:border-[#7dc3ff]/50 hover:bg-[#eaf4ff]')}
-              >
-                {t('app.challenge_daily_action')}
-              </button>
-              <button
-                type="button"
-                onClick={() => { void handleShareDailyVerse(); }}
-                className={cn('inline-flex h-11 w-11 items-center justify-center rounded-full border transition-all', desktopChipTone, isDarkMode ? 'hover:border-[#7dc3ff]/50 hover:bg-[#10284f]' : 'hover:border-[#7dc3ff]/50 hover:bg-[#eaf4ff]')}
-                aria-label={t('menu.share')}
-                title={t('menu.share')}
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 lg:grid-cols-1 xl:grid-cols-3">
-            <StatCard icon={<Flame className="h-5 w-5" />} label={t('app.challenge_streak')} shortLabel={currentLanguage === 'en' ? 'Streak' : 'Racha'} value={String(challengeSummary.streak)} accent="orange" isDarkMode={isDarkMode} />
-            <StatCard icon={<Star className="h-5 w-5" />} label={t('app.challenge_rewards')} shortLabel={currentLanguage === 'en' ? 'Points' : 'Puntos'} value={String(challengeSummary.totalRewardPoints)} accent="gold" isDarkMode={isDarkMode} />
-            <StatCard icon={<BookHeart className="h-5 w-5" />} label={t('menu.favorites')} shortLabel={currentLanguage === 'en' ? 'Saved' : 'Guardados'} value={String(bookmarksCount)} accent="blue" isDarkMode={isDarkMode} />
-          </div>
-        </motion.section>
-
-        <motion.section
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.12 }}
-          className="order-2 mt-6 grid gap-4 lg:grid-cols-[1.08fr_0.92fr]"
-        >
-          <div className={cn('relative overflow-hidden rounded-[32px] border p-5 sm:p-6', isDarkMode ? 'border-[#244b7d] bg-[radial-gradient(circle_at_top_left,_rgba(91,182,255,0.28),_transparent_34%),linear-gradient(140deg,_#12305f_0%,_#0a1d39_52%,_#102b53_100%)] shadow-[0_18px_60px_rgba(0,0,0,0.22)]' : 'border-[#d5e4f3] bg-[radial-gradient(circle_at_top_left,_rgba(91,182,255,0.16),_transparent_32%),linear-gradient(145deg,_#ffffff_0%,_#eef6ff_56%,_#f7fbff_100%)] shadow-[0_18px_50px_rgba(36,74,116,0.12)]')}>
-            <div className="absolute -right-16 top-0 h-44 w-44 rounded-full bg-[#67b9ff]/18 blur-3xl" />
-            <div className="absolute bottom-0 left-0 h-36 w-36 rounded-full bg-[#f3c76b]/10 blur-3xl" />
-            <div className="relative">
-              <p className={cn('text-[11px] font-semibold uppercase tracking-[0.32em]', desktopSectionBadgeTone)}>{t('app.daily_companion')}</p>
-              <h3 className={cn('mt-2 font-serif text-[2rem] font-bold leading-tight sm:text-3xl', desktopSectionTitleTone)}>{t('app.daily_companion_title')}</h3>
-              <p className={cn('mt-3 max-w-2xl font-sans text-sm leading-6 sm:leading-7', desktopSectionBodyTone)}>{t('app.daily_companion_body')}</p>
-
-              <div className="mt-6 space-y-5">
-                {companionSections.map((section) => (
-                  <section key={section.id}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className={cn('font-serif text-[1.2rem] font-bold', desktopSectionTitleTone)}>{section.title}</p>
-                        <p className={cn('mt-1 font-sans text-[11px] uppercase tracking-[0.18em]', desktopSectionBadgeTone)}>
-                          {currentLanguage === 'en' ? 'Slide left or right' : 'Desliza a izquierda o derecha'}
-                        </p>
-                      </div>
-                      <ChevronRight className={cn('h-5 w-5', desktopSectionBadgeTone)} />
-                    </div>
-
-                    <HorizontalDragRail className="-mx-1 mt-3 flex gap-4 overflow-x-auto px-1 pb-2 no-scrollbar snap-x" ariaLabel={section.title}>
-                      {section.items.map((resource) => renderCompanionCard(section.kind, section.label, resource, true))}
-                    </HorizontalDragRail>
-                  </section>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className={cn('rounded-[32px] border p-5 sm:p-6', desktopSectionTone)}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className={cn('text-[11px] font-semibold uppercase tracking-[0.32em]', desktopSectionBadgeTone)}>{t('app.weekly_goals')}</p>
-                <h3 className={cn('mt-2 font-serif text-3xl font-bold', desktopSectionTitleTone)}>{t('app.challenge_focus_week')}</h3>
-              </div>
-              <span className={cn('rounded-full border px-3 py-1.5 font-sans text-[10px] font-bold uppercase tracking-[0.18em]', isDarkMode ? 'border-[#f6c969]/20 bg-[#f6c969]/10 text-[#ffe39a]' : 'border-[#f6c969]/30 bg-[#fff7df] text-[#946a14]')}>
-                {challengeSummary.totalRewardPoints} pts
-              </span>
-            </div>
-
-            <div className="mt-6 grid gap-3">
-              {[
-                t('app.weekly_goal_daily'),
-                t('app.weekly_goal_chapters'),
-                t('app.weekly_goal_searches'),
-                t('app.weekly_goal_bookmarks'),
-                t('app.reading_goal_chapters'),
-                t('app.reading_goal_verses'),
-              ].map((goal, index) => (
-                <div key={goal} className={cn('flex items-center justify-between rounded-[22px] border px-4 py-3.5', isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-[#dbe8f5] bg-[#f7fbff]')}>
-                  <div>
-                    <p className={cn('font-sans text-[13px] font-semibold leading-5 sm:text-sm', desktopSectionTitleTone)}>{goal}</p>
-                    <p className={cn('mt-1 font-sans text-[11px] sm:text-xs', desktopSectionBodyTone)}>{index < 4 ? t('app.weekly_goals') : t('app.reading_goals')}</p>
-                  </div>
-                  <span className={cn('rounded-full border px-2.5 py-1.5 font-sans text-[9px] font-bold uppercase tracking-[0.18em] sm:px-3 sm:text-[10px]', isDarkMode ? 'border-[#4b9eff]/25 bg-[#4b9eff]/10 text-[#d8ecff]' : 'border-[#4b9eff]/25 bg-[#edf5ff] text-[#2f64a1]')}>
-                    {t('app.challenge_done')}
-                  </span>
+                <button type="submit" className="bg-[#334155] p-3 rounded-md text-white transition-colors hover:bg-slate-700">
+                  <Search className="h-6 w-6" />
+                </button>
+                <div className="hidden md:flex items-center gap-2 border-l border-slate-200 pl-4 pr-2">
+                  <select className="bg-transparent text-slate-600 text-sm font-bold outline-none cursor-pointer">
+                    <option>Versiones</option>
+                    <option>RV1960</option>
+                  </select>
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
                 </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section
-          initial={{ opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.18 }}
-          className="order-4 mt-6 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]"
-        >
-          <div className="rounded-[32px] border border-white/10 bg-[#07162b] p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#7fb8ff]">{t('home.section_explore')}</p>
-                <h3 className="mt-2 font-serif text-3xl font-bold text-white">{t('home.explore_title')}</h3>
+              </form>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-6 text-[11px] font-bold uppercase tracking-widest text-white/40">
+                 {['Toda la Biblia', 'Antiguo Testamento', 'Nuevo Testamento'].map(f => <label key={f} className="flex items-center gap-2 cursor-pointer hover:text-white"><input type="radio" name="filter" className="accent-[var(--primary)]" defaultChecked={f==='Toda la Biblia'} /> {f}</label>)}
+                 <div className="h-4 w-px bg-white/10" />
+                 {['Solo Biblia', 'Diccionario'].map(f => <label key={f} className="flex items-center gap-2 cursor-pointer hover:text-white"><input type="checkbox" className="accent-[var(--primary)]" defaultChecked={f==='Solo Biblia'} /> {f}</label>)}
               </div>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-[#d6e9ff]">
-                {books.length} {t('menu.books').toLowerCase()}
-              </span>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <FeatureCard
-                icon={<LibraryBig className="h-5 w-5" />}
-                title={t('testaments.old')}
-                detail={`${oldTestamentCount} ${t('menu.books').toLowerCase()}`}
-                onClick={() => onOpenBooks('old')}
-              />
-              <FeatureCard
-                icon={<LibraryBig className="h-5 w-5" />}
-                title={t('testaments.new')}
-                detail={`${newTestamentCount} ${t('menu.books').toLowerCase()}`}
-                onClick={() => onOpenBooks('new')}
-              />
-              <FeatureCard
-                icon={<Heart className="h-5 w-5" />}
-                title={t('menu.favorites')}
-                detail={t('home.saved_detail')}
-                onClick={onOpenFavorites}
-              />
-              <FeatureCard
-                icon={<Sparkles className="h-5 w-5" />}
-                title={t('menu.study')}
-                detail={t('home.guided_detail')}
-                onClick={onOpenStudy}
-              />
             </div>
           </div>
-
-          <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(155deg,_rgba(15,43,84,0.98)_0%,_rgba(8,19,37,0.95)_50%,_rgba(9,26,56,0.98)_100%)] p-5 sm:p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#7fb8ff]">{t('home.section_game')}</p>
-            <h3 className="mt-2 font-serif text-3xl font-bold text-white">{t('home.game_title')}</h3>
-            <p className="mt-3 font-sans text-sm leading-7 text-[#cfe2ff]">
-              {t('home.game_body')}
-            </p>
-
-            <div className="mt-5 grid grid-cols-5 gap-2 rounded-[24px] border border-white/8 bg-[#061223]/70 p-4">
-              {['F', 'E', 'P', 'A', 'Z', 'J', 'E', 'S', 'U', 'S', 'G', 'R', 'A', 'C', 'I', 'A', 'O', 'R', 'A', 'R', 'L', 'U', 'Z', 'F', 'E'].map((letter, index) => (
-                <div
-                  key={`${letter}-${index}`}
-                  className={cn(
-                    'flex aspect-square items-center justify-center rounded-2xl border text-sm font-bold shadow-inner',
-                    index === 0 || index === 1 || index === 22 || index === 23 || index === 24
-                      ? 'border-[#f6c969]/40 bg-[#f6c969]/15 text-[#ffe6a3]'
-                      : 'border-white/8 bg-white/5 text-[#e3f0ff]'
-                  )}
-                >
-                  {letter}
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={onOpenGame}
-              className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#4b9eff] px-5 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-white shadow-[0_14px_30px_rgba(75,158,255,0.35)] transition-all hover:-translate-y-0.5 hover:bg-[#63adff]"
-            >
-              <Gamepad2 className="h-4 w-4" />
-              {t('home.open_game_now')}
-            </button>
-          </div>
-        </motion.section>
-
         </div>
-        <MobilePageFooter />
+
+        <main className="px-4 py-6 sm:px-6 lg:px-8 flex-1">
+          {renderAppUpdateNotice('mb-6')}
+
+          {/* BANNER VERSICULO WEB */}
+          {homeSections.dailyVerse && dailyVerse && (
+            <section className="hidden lg:block relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl mb-8 group cursor-pointer" onClick={() => void handleImagePreview({ id: 'dv', title: dailyVerse.label, body: dailyVerse.verse.verse, imageUrl: dailyImage, verseReference: { bookAbrev: dailyVerse.bookAbrev, chapter: dailyVerse.chapter, verseNumber: preferredDailyVerseNumber ?? dailyVerse.verse.number, labelEs: dailyVerse.label, labelEn: dailyVerse.label } } as any)}>
+              <div className="absolute inset-0 z-0">
+                {dailyImage ? <img src={dailyImage} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Daily" /> : <div className="h-full w-full bg-slate-900" />}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
+              </div>
+              <div className="relative z-10 p-10 flex flex-col justify-center min-h-[260px]">
+                <div className="flex items-center gap-3 mb-4"><Sun className="h-6 w-6 text-[#f6c969]" /><span className="text-[#f6c969] font-bold uppercase tracking-[0.3em] text-xs">Versículo del día</span><div className="h-4 w-px bg-white/20 mx-2" /><span className="text-white text-xl font-serif font-bold">{dailyVerse.label}</span></div>
+                <p className="text-3xl font-serif leading-relaxed text-white max-w-3xl mb-6">« {dailyVerse.verse.verse} »</p>
+                <p className="text-white/50 text-sm font-medium">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              </div>
+            </section>
+          )}
+
+          {/* VERSICULO MOVIL */}
+          {homeSections.dailyVerse && dailyVerse && (
+            <section className="lg:hidden relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0a1220] p-4 text-white shadow-xl mb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div><p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#cfe5ff]">{mobileCopy.versesSection}</p><p className="mt-2 text-sm font-semibold text-white/90">{dailyVerse.label}</p></div>
+                <button onClick={() => { void handleShareDailyVerse(); }} className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/20 text-white"><Share2 className="h-4 w-4" /></button>
+              </div>
+              <button onClick={() => void handleImagePreview({ id: 'dv', title: dailyVerse.label, body: dailyVerse.verse.verse, imageUrl: dailyImage, verseReference: { bookAbrev: dailyVerse.bookAbrev, chapter: dailyVerse.chapter, verseNumber: preferredDailyVerseNumber ?? dailyVerse.verse.number, labelEs: dailyVerse.label, labelEn: dailyVerse.label } } as any)} className="mt-4 text-left font-serif text-[1.35rem] leading-8 text-white">{dailyVerse.verse.verse}</button>
+            </section>
+          )}
+
+          <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_350px]">
+            <div className="min-w-0 space-y-6">
+              {/* DEVOCIONAL MOVIL */}
+              {homeSections.devotional && (
+                <section className="rounded-[28px] border border-white/10 bg-[#111820] p-4 text-white shadow-xl">
+                  <div className="flex items-center justify-between gap-3 mb-4"><p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">{mobileCopy.devotional}</p><span className="text-xs font-bold text-[#78b8ff] bg-[#0f2d52] px-2 py-0.5 rounded-full">{challengeSummary.completedToday}/{challengeSummary.totalDailyTasks}</span></div>
+                  <div className="space-y-3">
+                    {devotionalItems.map(item => {
+                      const isOpen = openMobileDevotionalId === item.id;
+                      return (
+                        <div key={item.id} className="rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-3 transition-all">
+                          <button onClick={() => setOpenMobileDevotionalId(c => c === item.id ? null as any : item.id)} className="flex w-full items-center gap-3 text-left"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0f2d52] text-[#78b8ff]">{item.icon}</span><div className="flex-1"><p className="text-base font-semibold text-white">{item.title}</p></div><ChevronDown className={cn('h-4 w-4 text-white/30 transition-transform', isOpen && 'rotate-180')} /></button>
+                          {isOpen && (
+                            <div className="mt-4 rounded-[20px] bg-[#0c1118] p-4 border border-white/5">
+                              <p className="text-xs uppercase tracking-widest text-[#78b8ff] mb-2">{item.reference}</p>
+                              <p className="text-sm leading-6 text-white/78">{item.body}</p>
+                              <div className="mt-4 flex gap-3">
+                                <button onClick={item.primaryAction} className="flex-1 flex items-center justify-center gap-2 rounded-full bg-[var(--primary)] py-3 text-[11px] font-bold uppercase text-white"><Volume2 className="h-4 w-4" />{item.primaryLabel}</button>
+                                {item.secondaryAction && <button onClick={item.secondaryAction} className="flex-1 flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 py-3 text-[11px] font-bold uppercase text-white"><BookOpen className="h-4 w-4" />{item.secondaryLabel}</button>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* COMPANION SECTIONS (NOTICIAS, VIDEOS) */}
+              {companionSections.map(section => {
+                if (section.kind === 'image' && !homeSections.images) return null;
+                if (section.kind === 'news' && !homeSections.news) return null;
+                if (section.kind === 'video' && !homeSections.videos) return null;
+                return (
+                  <section key={section.id} ref={sectionRefs[section.kind] as any}>
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <h3 className={cn('text-xl font-bold', isDarkMode ? 'text-white' : 'text-[#102542]')}>{section.title}</h3>
+                      <ChevronRight className={cn('h-5 w-5', isDarkMode ? 'text-white/30' : 'text-slate-400')} />
+                    </div>
+                      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 no-scrollbar sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0">
+                        {section.items.slice(0, 4).map(r => renderCompanionCard(section.kind, section.label, r, true))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            {/* SIDEBAR DERECHO WEB */}
+            <aside className="hidden lg:block space-y-6">
+               <div className="rounded-[32px] border border-white/10 bg-[#07162b] p-6 shadow-xl">
+                 <div className="flex items-center justify-between gap-4 mb-6"><h3 className="font-serif text-xl font-bold text-white">Tu Progreso</h3><StatCard icon={<Flame className="h-4 w-4" />} label="" shortLabel="" value={String(challengeSummary.streak)} accent="orange" isDarkMode={isDarkMode} /></div>
+                 <div className="space-y-3">
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5"><p className="text-[10px] font-bold text-[#f6c969] uppercase tracking-widest mb-1">Recompensas</p><p className="text-2xl font-bold text-white">{challengeSummary.totalRewardPoints} pts</p></div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5"><p className="text-[10px] font-bold text-[#4fa8ff] uppercase tracking-widest mb-1">Libros Guardados</p><p className="text-2xl font-bold text-white">{bookmarksCount}</p></div>
+                 </div>
+               </div>
+               <div className="rounded-[32px] border border-white/10 bg-[#07162b] p-6 shadow-xl">
+                  <h3 className="font-serif text-xl font-bold text-white mb-4">Metas Semanales</h3>
+                  <div className="space-y-2">
+                     {[t('app.weekly_goal_daily'), t('app.weekly_goal_chapters'), t('app.weekly_goal_searches')].map(goal => (
+                       <div key={goal} className="flex items-center justify-between p-3 bg-white/5 rounded-xl text-xs"><span className="text-white/70">{goal}</span><span className="text-[#4fa8ff]">Listo</span></div>
+                     ))}
+                  </div>
+               </div>
+            </aside>
+          </div>
+        </main>
+        <MobilePageFooter
+          className="mt-auto"
+          onOpenAboutLegal={onOpenAboutLegal}
+          onOpenOpinions={onOpenOpinions}
+          onOpenDictionary={onOpenDictionary}
+        />
       </div>
 
+      <HelpGuideModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} isDarkMode={isDarkMode} />
       <MobileBottomNav items={mobileNavItems} />
+      <ScrollToTopButton targetSelector='[data-home-scroll-root="true"]' label={currentLanguage.startsWith('en') ? 'Back to top' : 'Volver arriba'} />
     </div>
   );
 }
 
 function getDailyCompanionLabel(kind: DailyCompanionKind, t: (key: string) => string) {
   switch (kind) {
-    case 'video':
-      return t('app.video_of_day');
-    case 'sermon':
-      return t('app.sermon_of_day');
-    case 'reflection':
-      return t('app.reflection_of_day');
-    case 'testimony':
-      return t('app.testimony_of_day');
-    case 'news':
-      return t('app.news_of_day');
-    case 'image':
-    default:
-      return t('app.image_of_day');
+    case 'video': return t('app.video_of_day');
+    case 'sermon': return t('app.sermon_of_day');
+    case 'reflection': return t('app.reflection_of_day');
+    case 'testimony': return t('app.testimony_of_day');
+    case 'news': return t('app.news_of_day');
+    case 'image': default: return t('app.image_of_day');
   }
 }
 
-function getDailyCompanionSectionTitle(kind: DailyCompanionKind, mobileCopy: {
-  images: string;
-  sermons: string;
-  news: string;
-  videos: string;
-  reflections: string;
-  testimonies: string;
-}) {
+function getDailyCompanionSectionTitle(kind: DailyCompanionKind, mc: any) {
   switch (kind) {
-    case 'image':
-      return mobileCopy.images;
-    case 'sermon':
-      return mobileCopy.sermons;
-    case 'video':
-      return mobileCopy.videos;
-    case 'reflection':
-      return mobileCopy.reflections;
-    case 'testimony':
-      return mobileCopy.testimonies;
-    case 'news':
-    default:
-      return mobileCopy.news;
+    case 'image': return mc.images;
+    case 'sermon': return mc.sermons;
+    case 'video': return mc.videos;
+    case 'reflection': return mc.reflections;
+    case 'testimony': return mc.testimonies;
+    case 'news': default: return mc.news;
   }
 }
 
 function getDailyCompanionIcon(kind: DailyCompanionKind) {
   switch (kind) {
-    case 'video':
-      return <PlayCircle className="h-5 w-5" />;
-    case 'sermon':
-      return <Volume2 className="h-5 w-5" />;
-    case 'reflection':
-      return <Quote className="h-5 w-5" />;
-    case 'testimony':
-      return <Heart className="h-5 w-5" />;
-    case 'news':
-      return <Newspaper className="h-5 w-5" />;
-    case 'image':
-    default:
-      return <Image className="h-5 w-5" />;
+    case 'video': return <PlayCircle className="h-5 w-5" />;
+    case 'sermon': return <Volume2 className="h-5 w-5" />;
+    case 'reflection': return <Quote className="h-5 w-5" />;
+    case 'testimony': return <Heart className="h-5 w-5" />;
+    case 'news': return <Newspaper className="h-5 w-5" />;
+    case 'image': default: return <Image className="h-5 w-5" />;
   }
 }
 
 function getDailyCompanionTone(kind: DailyCompanionKind, isDarkMode: boolean) {
   if (!isDarkMode) {
     switch (kind) {
-      case 'video':
-        return 'border-[#bfe7ff] bg-[linear-gradient(145deg,_#ffffff_0%,_#edf8ff_100%)] text-[#1d5b7f]';
-      case 'sermon':
-        return 'border-[#cfe6be] bg-[linear-gradient(145deg,_#ffffff_0%,_#f4faee_100%)] text-[#4b6f2d]';
-      case 'reflection':
-        return 'border-[#d7d0ff] bg-[linear-gradient(145deg,_#ffffff_0%,_#f3f0ff_100%)] text-[#4d4a94]';
-      case 'testimony':
-        return 'border-[#ffd0ae] bg-[linear-gradient(145deg,_#ffffff_0%,_#fff4ea_100%)] text-[#93572a]';
-      case 'news':
-        return 'border-[#c8ddff] bg-[linear-gradient(145deg,_#ffffff_0%,_#edf4ff_100%)] text-[#365f96]';
-      case 'image':
-      default:
-        return 'border-[#f9dc9e] bg-[linear-gradient(145deg,_#ffffff_0%,_#fff8e8_100%)] text-[#8c6c1b]';
+      case 'video': return 'border-[#bfe7ff] bg-[#edf8ff] text-[#1d5b7f]';
+      case 'sermon': return 'border-[#cfe6be] bg-[#f4faee] text-[#4b6f2d]';
+      case 'reflection': return 'border-[#d7d0ff] bg-[#f3f0ff] text-[#4d4a94]';
+      case 'testimony': return 'border-[#ffd0ae] bg-[#fff4ea] text-[#93572a]';
+      case 'news': return 'border-[#c8ddff] bg-[#edf4ff] text-[#365f96]';
+      case 'image': default: return 'border-[#f9dc9e] bg-[#fff8e8] text-[#8c6c1b]';
     }
   }
-
   switch (kind) {
-    case 'video':
-      return 'border-[#62d4ff]/24 bg-[#62d4ff]/10 text-[#ddf8ff]';
-    case 'sermon':
-      return 'border-[#9bd18f]/24 bg-[#9bd18f]/10 text-[#ecffd9]';
-    case 'reflection':
-      return 'border-[#8f7dff]/24 bg-[#8f7dff]/10 text-[#ecebff]';
-    case 'testimony':
-      return 'border-[#ff9b54]/24 bg-[#ff9b54]/10 text-[#ffd6b6]';
-    case 'news':
-      return 'border-[#5eb8ff]/24 bg-[#5eb8ff]/10 text-[#dff1ff]';
-    case 'image':
-    default:
-      return 'border-[#f6c969]/24 bg-[#f6c969]/10 text-[#ffe7a8]';
+    case 'video': return 'border-[#62d4ff]/24 bg-[#62d4ff]/10 text-[#ddf8ff]';
+    case 'sermon': return 'border-[#9bd18f]/24 bg-[#9bd18f]/10 text-[#ecffd9]';
+    case 'reflection': return 'border-[#8f7dff]/24 bg-[#8f7dff]/10 text-[#ecebff]';
+    case 'testimony': return 'border-[#ff9b54]/24 bg-[#ff9b54]/10 text-[#ffd6b6]';
+    case 'news': return 'border-[#5eb8ff]/24 bg-[#5eb8ff]/10 text-[#dff1ff]';
+    case 'image': default: return 'border-[#f6c969]/24 bg-[#f6c969]/10 text-[#ffe7a8]';
   }
 }
 
-function getDailyCompanionFallbackGradient(kind: DailyCompanionKind, isDarkMode: boolean) {
-  if (!isDarkMode) {
-    switch (kind) {
-      case 'video':
-        return 'linear-gradient(135deg, rgba(78,188,255,0.88), rgba(27,108,185,0.94))';
-      case 'sermon':
-        return 'linear-gradient(135deg, rgba(114,197,151,0.9), rgba(26,100,111,0.94))';
-      case 'reflection':
-        return 'linear-gradient(135deg, rgba(111,143,255,0.84), rgba(138,102,216,0.9))';
-      case 'testimony':
-        return 'linear-gradient(135deg, rgba(255,184,127,0.88), rgba(189,103,84,0.92))';
-      case 'news':
-        return 'linear-gradient(135deg, rgba(102,163,255,0.84), rgba(66,103,170,0.94))';
-      case 'image':
-      default:
-        return 'linear-gradient(135deg, rgba(91,182,255,0.86), rgba(246,201,105,0.88))';
-    }
-  }
-
-  switch (kind) {
-    case 'video':
-      return 'linear-gradient(135deg, rgba(32,130,188,0.96), rgba(8,20,45,0.98))';
-    case 'sermon':
-      return 'linear-gradient(135deg, rgba(26,111,103,0.96), rgba(7,26,35,0.98))';
-    case 'reflection':
-      return 'linear-gradient(135deg, rgba(73,98,204,0.96), rgba(23,18,53,0.98))';
-    case 'testimony':
-      return 'linear-gradient(135deg, rgba(168,96,56,0.96), rgba(44,17,25,0.98))';
-    case 'news':
-      return 'linear-gradient(135deg, rgba(39,92,168,0.96), rgba(8,20,45,0.98))';
-    case 'image':
-    default:
-      return 'linear-gradient(135deg, rgba(43,122,194,0.96), rgba(116,87,24,0.98))';
-  }
-}
-
-type DailyCompanionKind = DailyContentKind;
-
-interface DailyCompanionCardProps {
-  kind: DailyCompanionKind;
-  label: string;
-  resource: DailyResourceCard;
-  isDarkMode: boolean;
-  onClick: () => void;
-  compact?: boolean;
-}
-
-function DailyCompanionCard({ kind, label, resource, isDarkMode, onClick, compact = false }: DailyCompanionCardProps) {
+function DailyCompanionCard({ kind, label, resource, isDarkMode, onClick, compact = false }: { kind: DailyCompanionKind, label: string, resource: DailyResourceCard, isDarkMode: boolean, onClick: () => void, compact?: boolean }) {
+  const publishedLabel = resource.publishedAt && Number.isFinite(Date.parse(resource.publishedAt))
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(resource.publishedAt))
+    : null;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'group overflow-hidden rounded-[26px] border text-left transition-all hover:-translate-y-1',
-        getDailyCompanionTone(kind, isDarkMode),
-        compact ? 'w-[21.75rem] flex-shrink-0 snap-start p-3.5' : 'w-full p-4 sm:p-5'
-      )}
-    >
-      <div
-        className={cn(
-          'relative overflow-hidden rounded-[22px] border',
-          isDarkMode ? 'border-white/10 bg-black/15' : 'border-white/70 bg-white/90 shadow-[0_14px_30px_rgba(36,74,116,0.12)]',
-          compact ? 'aspect-[16/11]' : 'aspect-[16/10]'
-        )}
-        style={resource.imageUrl ? undefined : { backgroundImage: resource.gradient ?? getDailyCompanionFallbackGradient(kind, isDarkMode) }}
-      >
-        {resource.imageUrl ? (
-          <img
-            src={resource.imageUrl}
-            alt={resource.imageAlt ?? resource.title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-white/95">
-            <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border border-white/18 bg-black/15 backdrop-blur-sm">
-              {getDailyCompanionIcon(kind)}
-            </div>
-          </div>
-        )}
-
-        <div className={cn('absolute inset-0', resource.imageUrl ? 'bg-[linear-gradient(180deg,rgba(4,11,20,0.14)_0%,rgba(4,11,20,0.24)_26%,rgba(4,11,20,0.9)_100%)]' : 'bg-[linear-gradient(180deg,rgba(4,11,20,0.06)_0%,rgba(4,11,20,0.22)_42%,rgba(4,11,20,0.78)_100%)]')} />
-
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-          <span className="rounded-full border border-white/18 bg-black/25 px-3 py-1.5 font-sans text-[10px] font-bold uppercase tracking-[0.22em] text-white/92 backdrop-blur-sm">
-            {label}
-          </span>
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/18 bg-black/20 text-white/92 backdrop-blur-sm">
-            {getDailyCompanionIcon(kind)}
-          </span>
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          {resource.sourceName ? (
-            <p className="font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white/78">
-              {resource.sourceName}
-            </p>
-          ) : null}
-          <h4 className={cn('mt-2 font-serif font-bold leading-tight text-pretty text-white', compact ? 'text-[1.2rem]' : 'text-[1.45rem]')}>
-            {resource.title}
-          </h4>
-        </div>
+    <button type="button" onClick={onClick} className={cn('group overflow-hidden rounded-[26px] border text-left transition-all', getDailyCompanionTone(kind, isDarkMode), compact ? 'w-[min(86vw,22rem)] shrink-0 snap-start p-3.5 sm:w-full sm:min-w-0' : 'w-full p-4')}>
+      <div className={cn('relative overflow-hidden rounded-[22px] aspect-[16/10] bg-black/20')}>
+        {resource.imageUrl && <img src={resource.imageUrl} className="h-full w-full object-cover" loading="lazy" alt="" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-4"><h4 className="font-serif font-bold text-white leading-tight">{resource.title}</h4></div>
       </div>
-
-      <div className="mt-4 min-w-0">
-        <p className={cn('font-sans text-pretty', isDarkMode ? 'text-current/85' : 'text-[#4e6786]', compact ? 'text-[13px] leading-5' : 'text-sm leading-6')}>
-          {resource.body}
-        </p>
-
-        <div className="mt-4 flex items-center gap-2 text-current">
-          <span className={cn('inline-flex rounded-full border font-sans font-bold uppercase tracking-[0.18em]', isDarkMode ? 'border-current/15 bg-black/10' : 'border-current/10 bg-white/75', compact ? 'px-3 py-1.5 text-[9px]' : 'px-3 py-2 text-[10px]')}>
-            {resource.sourceLabel ?? 'Abrir'}
-          </span>
-          <ExternalLink className="h-4 w-4 opacity-75" />
-        </div>
-      </div>
+      <div className="mt-4"><p className="text-sm line-clamp-2 opacity-80">{resource.body}</p><p className="mt-2 text-xs opacity-60">{resource.sourceName}{publishedLabel ? ` · ${publishedLabel}` : ''}</p></div>
     </button>
   );
 }
 
-interface DailyImageCardProps {
-  label: string;
-  resource: DailyResourceCard;
-  currentLanguage: 'es' | 'en';
-  isDarkMode: boolean;
-  isSaved: boolean;
-  onToggleSaved: () => void;
-  onOpenImage: () => void;
-  onOpenVerse: () => void;
-  onShare: () => void;
-  compact?: boolean;
-}
-
-function DailyImageCard({ label, resource, currentLanguage, isDarkMode, isSaved, onToggleSaved, onOpenImage, onOpenVerse, onShare, compact = false }: DailyImageCardProps) {
-  const verseLabel = resource.verseReference
-    ? resource.verseReference[currentLanguage === 'en' ? 'labelEn' : 'labelEs']
-    : null;
-  const quoteText = resource.quote ?? resource.body;
-  const overlayQuote = quoteText.startsWith('“') ? quoteText : `“${quoteText.replace(/["“”]/g, '').trim()}”`;
-
-  if (compact) {
-    return (
-      <article
-        className={cn(
-          'w-[11.25rem] flex-shrink-0 snap-start overflow-hidden rounded-[26px]',
-          isDarkMode ? 'text-white' : 'text-[#102542]'
-        )}
-      >
-        <div className="relative">
-          <button
-            type="button"
-            onClick={onOpenImage}
-            className={cn(
-              'group block w-full overflow-hidden rounded-[26px] border p-[0.22rem] shadow-[0_18px_42px_rgba(0,0,0,0.22)] transition-transform hover:-translate-y-0.5',
-              isDarkMode ? 'border-[#274b7a] bg-[#143766]' : 'border-[#d9e7f5] bg-[#173763]'
-            )}
-            aria-label={resource.title}
-            title={resource.title}
-          >
-            <div className="relative h-[13rem] w-full overflow-hidden rounded-[22px]">
-              {resource.imageUrl ? (
-                <img src={resource.imageUrl} alt={resource.imageAlt ?? resource.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-              ) : (
-                <div className={cn('flex h-full w-full items-center justify-center', isDarkMode ? 'bg-white/5 text-[#ffe7a8]' : 'bg-[#edf5ff] text-[#3e79ac]')}>
-                  <Image className="h-8 w-8" />
-                </div>
-              )}
-
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,11,20,0.12)_0%,rgba(4,11,20,0.14)_30%,rgba(4,11,20,0.76)_100%)]" />
-
-              <div className="absolute left-3 top-3 rounded-full border border-white/16 bg-black/24 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-white/92 backdrop-blur-sm">
-                {label}
-              </div>
-
-              <div className="absolute inset-x-0 bottom-0 p-3.5 text-left text-white">
-                <p className="line-clamp-4 font-sans text-[0.86rem] font-medium leading-6 text-white drop-shadow-[0_8px_18px_rgba(0,0,0,0.35)]">
-                  {overlayQuote}
-                </p>
-                {verseLabel ? (
-                  <p className="mt-2 font-sans text-[0.72rem] font-bold text-white/94 drop-shadow-[0_8px_18px_rgba(0,0,0,0.35)]">
-                    {verseLabel}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleSaved}
-            className={cn(
-              'absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-sm transition-all',
-              isSaved
-                ? 'border-[#f6c969]/55 bg-[#f6c969]/22 text-[#ffe7a8]'
-                : 'border-white/18 bg-black/28 text-white/88 hover:border-white/32 hover:bg-black/36'
-            )}
-            aria-label={currentLanguage === 'en' ? 'Save image' : 'Guardar imagen'}
-            title={currentLanguage === 'en' ? 'Save image' : 'Guardar imagen'}
-          >
-            <Bookmark className={cn('h-5 w-5', isSaved && 'fill-current')} />
-          </button>
-        </div>
-      </article>
-    );
-  }
-
+function DailyImageCard({ label, resource, currentLanguage, isDarkMode, isSaved, onToggleSaved, onOpenImage, onOpenVerse, onShare, compact = false }: any) {
   return (
-    <article
-      className={cn(
-        'group overflow-hidden',
-        isDarkMode
-          ? 'rounded-[24px] border border-[#f6c969]/24 bg-[linear-gradient(145deg,_rgba(32,73,128,0.96)_0%,_rgba(10,23,45,0.98)_60%,_rgba(13,35,66,0.98)_100%)] text-white shadow-[0_18px_50px_rgba(0,0,0,0.24)]'
-          : 'rounded-[24px] border border-[#d5e4f3] bg-[linear-gradient(145deg,_#ffffff_0%,_#eef6ff_55%,_#f9fbff_100%)] text-[#102542] shadow-[0_18px_46px_rgba(36,74,116,0.12)]',
-        compact ? 'w-[20.75rem] flex-shrink-0 snap-start p-3.5' : 'w-full p-4 sm:p-5'
-      )}
-    >
-      <div className={cn('relative overflow-hidden rounded-[22px] border shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]', isDarkMode ? 'border-white/10 bg-white/5' : 'border-[#d9e7f5] bg-white', compact ? 'h-[16.5rem]' : 'h-[24rem]')}>
-        {resource.imageUrl ? (
-          <img src={resource.imageUrl} alt={resource.imageAlt ?? resource.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-        ) : (
-          <div className={cn('flex h-full w-full items-center justify-center', isDarkMode ? 'text-[#ffe7a8]' : 'text-[#3e79ac]')}>
-            <Image className="h-8 w-8" />
-          </div>
-        )}
-
-        <div className={cn('absolute inset-0', resource.imageUrl ? 'bg-[linear-gradient(180deg,rgba(4,11,20,0.08)_0%,rgba(4,11,20,0.24)_28%,rgba(4,11,20,0.88)_100%)]' : 'bg-[linear-gradient(180deg,rgba(16,37,66,0.22)_0%,rgba(16,37,66,0.92)_100%)]')} />
-
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-          <span className="rounded-full border border-white/18 bg-black/25 px-3 py-1.5 font-sans text-[10px] font-bold uppercase tracking-[0.22em] text-white/92 backdrop-blur-sm">
-            {label}
-          </span>
-          {resource.sourceName ? (
-            <span className="rounded-full border border-white/18 bg-black/25 px-3 py-1.5 font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white/88 backdrop-blur-sm">
-              {resource.sourceName}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-          {resource.quote ? (
-            <p className={cn('max-w-xl font-serif italic text-white text-pretty drop-shadow-[0_10px_26px_rgba(0,0,0,0.34)]', compact ? 'text-[0.96rem] leading-6' : 'text-[1.42rem] leading-8')}>
-              {resource.quote}
-            </p>
-          ) : null}
-          {verseLabel ? (
-            <p className="mt-3 font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">
-              {verseLabel}
-            </p>
-          ) : null}
-        </div>
+    <article className={cn('group overflow-hidden rounded-[24px] border', compact ? 'w-[min(86vw,22rem)] shrink-0 snap-start p-3.5 sm:w-full sm:min-w-0' : 'w-full p-4', isDarkMode ? 'border-white/10 bg-white/5' : 'border-[#d5e4f3] bg-white')}>
+      <div className="relative overflow-hidden rounded-[20px] aspect-[16/10] cursor-pointer" onClick={onOpenImage}>
+        {resource.imageUrl && <img src={resource.imageUrl} className="h-full w-full object-cover" alt="" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute bottom-4 left-4 right-4 text-white"><p className="font-serif italic text-lg leading-tight line-clamp-3">{resource.quote || resource.title}</p></div>
       </div>
-
-      <div className="mt-4 min-w-0">
-        <h4 className={cn('font-serif font-bold leading-tight text-pretty', isDarkMode ? 'text-white' : 'text-[#102542]', compact ? 'text-[1.2rem]' : 'text-[1.4rem]')}>
-          {resource.title}
-        </h4>
-        <p className={cn('mt-2 font-sans text-pretty', isDarkMode ? 'text-white/78' : 'text-[#4e6786]', compact ? 'text-[13px] leading-5' : 'text-sm leading-6')}>
-          {resource.body}
-        </p>
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2.5">
-        <button
-          type="button"
-          onClick={onOpenImage}
-          className={cn('inline-flex items-center gap-2 rounded-full px-4 py-2.5 font-sans text-[10px] font-bold uppercase tracking-[0.18em] transition-all hover:-translate-y-0.5', isDarkMode ? 'bg-[#4b9eff] text-white shadow-[0_12px_26px_rgba(75,158,255,0.35)] hover:bg-[#63adff]' : 'border border-[#6eaef3] bg-[#4b9eff] text-white shadow-[0_12px_24px_rgba(75,158,255,0.22)] hover:bg-[#3d93ff]')}
-        >
-          <ExternalLink className="h-4 w-4" />
-          {resource.sourceLabel ?? (currentLanguage === 'en' ? 'View image' : 'Ver imagen')}
-        </button>
-        <button
-          type="button"
-          onClick={onOpenVerse}
-          className={cn('inline-flex items-center gap-2 rounded-full border px-4 py-2.5 font-sans text-[10px] font-bold uppercase tracking-[0.18em] transition-all', isDarkMode ? 'border-white/12 bg-white/5 text-[#dbeeff] hover:border-[#7dc3ff]/50 hover:bg-[#10284f]' : 'border-[#cfe0f2] bg-white text-[#2f64a1] hover:border-[#7dc3ff]/50 hover:bg-[#edf5ff]')}
-        >
-          <BookOpen className="h-4 w-4" />
-          {currentLanguage === 'en' ? 'Open passage' : 'Abrir pasaje'}
-        </button>
-        <button
-          type="button"
-          onClick={onShare}
-          className={cn('inline-flex items-center gap-2 rounded-full border px-4 py-2.5 font-sans text-[10px] font-bold uppercase tracking-[0.18em] transition-all', isDarkMode ? 'border-[#f6c969]/25 bg-[#f6c969]/10 text-[#ffe7a8] hover:border-[#f6c969]/45 hover:bg-[#f6c969]/16' : 'border-[#f4d893] bg-[#fff7df] text-[#a87711] hover:border-[#efc863]/55 hover:bg-[#fff0c5]')}
-        >
-          <Share2 className="h-4 w-4" />
-          {currentLanguage === 'en' ? 'Share image' : 'Compartir imagen'}
-        </button>
+      <div className="mt-4 flex gap-2">
+        <button onClick={onOpenImage} className="flex-1 rounded-full bg-[var(--primary)] py-2 text-[10px] font-bold uppercase text-white">Ver</button>
+        <button onClick={onShare} className="flex-1 rounded-full border border-white/10 py-2 text-[10px] font-bold uppercase">Compartir</button>
       </div>
     </article>
   );
 }
 
-interface HorizontalDragRailProps {
-  className?: string;
-  children: ReactNode;
-  ariaLabel?: string;
+function HorizontalDragRail({ className, children, ariaLabel }: { className?: string, children: ReactNode, ariaLabel?: string }) {
+  return <div className={cn('flex gap-4 overflow-x-auto no-scrollbar', className)}>{children}</div>;
 }
 
-function HorizontalDragRail({ className, children, ariaLabel }: HorizontalDragRailProps) {
-  const railRef = useRef<HTMLDivElement>(null);
-  const [canScrollBack, setCanScrollBack] = useState(false);
-  const [canScrollForward, setCanScrollForward] = useState(false);
-
-  useEffect(() => {
-    const rail = railRef.current;
-    if (!rail) {
-      return;
-    }
-
-    const updateScrollControls = () => {
-      setCanScrollBack(rail.scrollLeft > 8);
-      setCanScrollForward(rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 8);
-    };
-
-    updateScrollControls();
-    rail.addEventListener('scroll', updateScrollControls, { passive: true });
-    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateScrollControls) : null;
-    resizeObserver?.observe(rail);
-
-    return () => {
-      rail.removeEventListener('scroll', updateScrollControls);
-      resizeObserver?.disconnect();
-    };
-  }, []);
-
-  const scrollRailBy = (direction: 'back' | 'forward') => {
-    const rail = railRef.current;
-    if (!rail) {
-      return;
-    }
-
-    rail.scrollBy({
-      left: (direction === 'forward' ? 1 : -1) * Math.max(rail.clientWidth * 0.78, 320),
-      behavior: 'smooth',
-    });
-  };
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => scrollRailBy('back')}
-        disabled={!canScrollBack}
-        aria-label={ariaLabel ? `Desplazar ${ariaLabel} hacia la izquierda` : 'Desplazar hacia la izquierda'}
-        className="absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-[#07162b]/88 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:bg-[#10284f] disabled:pointer-events-none disabled:opacity-0 lg:flex"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-
-      <div
-        ref={railRef}
-        aria-label={ariaLabel}
-        className={cn('touch-auto', className)}
-      >
-        {children}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => scrollRailBy('forward')}
-        disabled={!canScrollForward}
-        aria-label={ariaLabel ? `Desplazar ${ariaLabel} hacia la derecha` : 'Desplazar hacia la derecha'}
-        className="absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-[#07162b]/88 text-white shadow-[0_12px_30px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:bg-[#10284f] disabled:pointer-events-none disabled:opacity-0 lg:flex"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
-    </div>
-  );
+function QuickActionCard({ icon, label, detail, tone, onClick }: any) {
+  const ts: any = { gold: 'bg-[#f6c969]/10 text-[#ffe7a8] border-[#f6c969]/20', blue: 'bg-[#5eb8ff]/10 text-[#dff1ff] border-[#5eb8ff]/20', violet: 'bg-[#7e7bff]/10 text-[#ecebff] border-[#7e7bff]/20', sky: 'bg-[#62d4ff]/10 text-[#ddf8ff] border-[#62d4ff]/20' };
+  return <button onClick={onClick} className={cn('rounded-[24px] border p-4 text-left transition-all hover:scale-[1.02]', ts[tone])}><div className="h-10 w-10 flex items-center justify-center rounded-xl bg-black/20 mb-3">{icon}</div><p className="text-[10px] font-bold uppercase tracking-widest">{label}</p><p className="text-xs opacity-70 mt-1">{detail}</p></button>;
 }
 
-interface QuickActionCardProps {
-  icon: ReactNode;
-  label: string;
-  detail: string;
-  tone: 'gold' | 'blue' | 'violet' | 'sky';
-  onClick: () => void;
-}
-
-function QuickActionCard({ icon, label, detail, tone, onClick }: QuickActionCardProps) {
-  const tones: Record<QuickActionCardProps['tone'], string> = {
-    gold: 'border-[#f6c969]/30 bg-[#f6c969]/12 text-[#ffe7a8] hover:bg-[#f6c969]/18',
-    blue: 'border-[#5eb8ff]/30 bg-[#5eb8ff]/12 text-[#dff1ff] hover:bg-[#5eb8ff]/18',
-    violet: 'border-[#7e7bff]/28 bg-[#7e7bff]/12 text-[#ecebff] hover:bg-[#7e7bff]/18',
-    sky: 'border-[#62d4ff]/28 bg-[#62d4ff]/12 text-[#ddf8ff] hover:bg-[#62d4ff]/18',
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn('rounded-[24px] border p-3.5 text-left transition-all hover:-translate-y-0.5 sm:rounded-[26px] sm:p-4', tones[tone])}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-black/15 sm:h-11 sm:w-11">{icon}</div>
-      </div>
-      <p className="mt-3 font-sans text-[10px] font-bold uppercase tracking-[0.18em] sm:mt-4 sm:text-[11px] sm:tracking-[0.22em]">{label}</p>
-      <p className="mt-2 font-sans text-[13px] leading-5 text-white/78 sm:text-sm sm:leading-6">{detail}</p>
-    </button>
-  );
-}
-
-interface FeatureCardProps {
-  icon: ReactNode;
-  title: string;
-  detail: string;
-  onClick: () => void;
-}
-
-function FeatureCard({ icon, title, detail, onClick }: FeatureCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-[24px] border border-white/10 bg-white/5 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-[#63b3ff]/35 hover:bg-[#0f2446] sm:rounded-[26px] sm:p-4"
-    >
-      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-[#0d213f] text-[#b9dcff] sm:h-12 sm:w-12">
-        {icon}
-      </div>
-      <h4 className="mt-3 font-serif text-lg font-bold leading-tight text-white sm:mt-4 sm:text-xl">{title}</h4>
-      <p className="mt-2 font-sans text-[13px] leading-5 text-[#cfe2ff] sm:text-sm sm:leading-6">{detail}</p>
-    </button>
-  );
-}
-
-interface StatCardProps {
-  icon: ReactNode;
-  label: string;
-  shortLabel: string;
-  value: string;
-  accent: 'orange' | 'gold' | 'blue';
-  isDarkMode: boolean;
-}
-
-function StatCard({ icon, label, shortLabel, value, accent, isDarkMode }: StatCardProps) {
-  const accents: Record<StatCardProps['accent'], { card: string; icon: string; label: string; value: string }> = isDarkMode
-    ? {
-        orange: {
-          card: 'border-[#ff8d48]/25 bg-[linear-gradient(180deg,_rgba(255,141,72,0.16),_rgba(255,141,72,0.05))]',
-          icon: 'bg-black/15 text-[#ffd4bd]',
-          label: 'text-white/72',
-          value: 'text-white',
-        },
-        gold: {
-          card: 'border-[#f6c969]/25 bg-[linear-gradient(180deg,_rgba(246,201,105,0.18),_rgba(246,201,105,0.05))]',
-          icon: 'bg-black/15 text-[#ffe8ac]',
-          label: 'text-white/72',
-          value: 'text-white',
-        },
-        blue: {
-          card: 'border-[#66b8ff]/25 bg-[linear-gradient(180deg,_rgba(102,184,255,0.18),_rgba(102,184,255,0.05))]',
-          icon: 'bg-black/15 text-[#d7edff]',
-          label: 'text-white/72',
-          value: 'text-white',
-        },
-      }
-    : {
-        orange: {
-          card: 'border-[#ffd4bd] bg-[linear-gradient(180deg,_rgba(255,141,72,0.18),_rgba(255,255,255,0.98))]',
-          icon: 'bg-white/80 text-[#c66d33] shadow-[0_10px_22px_rgba(198,109,51,0.12)]',
-          label: 'text-[#b3866e]',
-          value: 'text-[#925028]',
-        },
-        gold: {
-          card: 'border-[#f7e3af] bg-[linear-gradient(180deg,_rgba(246,201,105,0.22),_rgba(255,255,255,0.98))]',
-          icon: 'bg-white/80 text-[#b88a1d] shadow-[0_10px_22px_rgba(184,138,29,0.10)]',
-          label: 'text-[#a78c55]',
-          value: 'text-[#946f10]',
-        },
-        blue: {
-          card: 'border-[#cde6fb] bg-[linear-gradient(180deg,_rgba(102,184,255,0.20),_rgba(255,255,255,0.98))]',
-          icon: 'bg-white/80 text-[#3d7db3] shadow-[0_10px_22px_rgba(61,125,179,0.10)]',
-          label: 'text-[#7a95b2]',
-          value: 'text-[#2b5f90]',
-        },
-      };
-
-  const tone = accents[accent];
-
-  return (
-    <div className={cn('rounded-[22px] border p-3 shadow-[0_14px_40px_rgba(0,0,0,0.18)] sm:rounded-[30px] sm:p-5', tone.card)}>
-      <div className={cn('flex h-9 w-9 items-center justify-center rounded-2xl sm:h-11 sm:w-11', tone.icon)}>{icon}</div>
-      <p className={cn('mt-3 font-sans text-[8px] font-semibold uppercase tracking-[0.16em] sm:mt-4 sm:text-[11px] sm:tracking-[0.24em]', tone.label)}>
-        <span className="sm:hidden">{shortLabel}</span>
-        <span className="hidden sm:inline">{label}</span>
-      </p>
-      <p className={cn('mt-1.5 font-serif text-[2rem] font-bold leading-none sm:mt-2 sm:text-4xl', tone.value)}>{value}</p>
-    </div>
-  );
+function StatCard({ icon, label, shortLabel, value, accent, isDarkMode }: any) {
+  const as: any = { orange: 'bg-orange-500/10 text-orange-400 border-orange-500/20', gold: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20', blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+  return <div className={cn('rounded-2xl border p-4 flex flex-col items-center justify-center text-center', as[accent])}><div className="mb-2">{icon}</div><p className="text-[10px] font-bold uppercase opacity-60 mb-1">{shortLabel || label}</p><p className="text-3xl font-serif font-bold">{value}</p></div>;
 }

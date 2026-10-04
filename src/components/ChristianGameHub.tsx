@@ -8,6 +8,8 @@ import { PanelNavButtons } from '@/src/components/PanelNavButtons';
 import { WordSearchBoard } from '@/src/components/game/WordSearchBoard';
 import { LEVELS, THEMES, type LevelDef } from '@/src/lib/wordBiblia/levels';
 import { generateWordSearch, type PlacedWord, type WordSearchGrid } from '@/src/lib/wordBiblia/wordSearch';
+import { loadGameProgress, saveGameProgress } from '@/src/services/gameProgressApi';
+import { type AboutLegalType } from '@/src/components/AboutLegalModal';
 import { cn } from '@/src/lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -20,7 +22,10 @@ interface ChristianGameHubProps {
   onOpenFavorites?: () => void;
   onOpenSearch?: () => void;
   onOpenPlans?: () => void;
+  onOpenOpinions?: () => void;
+  onOpenDictionary?: () => void;
   onOpenUser?: () => void;
+  onOpenAboutLegal?: (type: AboutLegalType) => void;
   onShare: () => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
@@ -37,6 +42,7 @@ type GameView = 'home' | 'map' | 'level';
 interface WordGameState {
   currentLevel: number;
   completedLevels: number[];
+  levelStars: Record<number, number>;
   wordsFoundTotal: number;
   rewardPoints: number;
   lastPlayedLevel: number;
@@ -44,35 +50,60 @@ interface WordGameState {
 
 const WORD_GAME_STORAGE_KEY = 'biblia_nj_word_game_v1';
 const WORD_GAME_SOUND_STORAGE_KEY = 'biblia_nj_word_game_sound_v1';
+const USER_SESSION_STORAGE_KEY = 'biblia_nj_user_session';
 const DEFAULT_WORD_GAME_STATE: WordGameState = {
   currentLevel: 1,
   completedLevels: [],
+  levelStars: {},
   wordsFoundTotal: 0,
   rewardPoints: 0,
   lastPlayedLevel: 1,
 };
 
-function readStoredWordGameState() {
+interface GameSession {
+  userId: string;
+  accessToken: string;
+}
+
+function readGameSession(): GameSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const rawSession = window.localStorage.getItem(USER_SESSION_STORAGE_KEY);
+    const session = rawSession ? JSON.parse(rawSession) as Partial<GameSession> : null;
+    return session?.userId && session.accessToken ? { userId: session.userId, accessToken: session.accessToken } : null;
+  } catch {
+    return null;
+  }
+}
+
+function sanitizeWordGameState(parsedState: Partial<WordGameState>): WordGameState {
+  return {
+    ...DEFAULT_WORD_GAME_STATE,
+    ...parsedState,
+    currentLevel: Math.max(1, Math.min(parsedState.currentLevel ?? 1, LEVELS.length)),
+    lastPlayedLevel: Math.max(1, Math.min(parsedState.lastPlayedLevel ?? 1, LEVELS.length)),
+    completedLevels: Array.isArray(parsedState.completedLevels)
+      ? [...new Set(parsedState.completedLevels.filter((levelNumber) => Number.isInteger(levelNumber) && levelNumber > 0 && levelNumber <= LEVELS.length))]
+      : [],
+    levelStars: Object.fromEntries(Object.entries(parsedState.levelStars ?? {}).filter(([levelNumber, stars]) => (
+      Number.isInteger(Number(levelNumber)) && Number(levelNumber) > 0 && Number(levelNumber) <= LEVELS.length && Number.isInteger(stars) && stars >= 1 && stars <= 3
+    )).map(([levelNumber, stars]) => [Number(levelNumber), stars])),
+  };
+}
+
+function readStoredWordGameState(storageKey = WORD_GAME_STORAGE_KEY) {
   if (typeof window === 'undefined') {
     return DEFAULT_WORD_GAME_STATE;
   }
 
   try {
-    const rawState = window.localStorage.getItem(WORD_GAME_STORAGE_KEY);
+    const rawState = window.localStorage.getItem(storageKey);
     if (!rawState) {
       return DEFAULT_WORD_GAME_STATE;
     }
 
     const parsedState = JSON.parse(rawState) as Partial<WordGameState>;
-    return {
-      ...DEFAULT_WORD_GAME_STATE,
-      ...parsedState,
-      currentLevel: Math.max(1, Math.min(parsedState.currentLevel ?? 1, LEVELS.length)),
-      lastPlayedLevel: Math.max(1, Math.min(parsedState.lastPlayedLevel ?? 1, LEVELS.length)),
-      completedLevels: Array.isArray(parsedState.completedLevels)
-        ? parsedState.completedLevels.filter((levelNumber) => Number.isInteger(levelNumber) && levelNumber > 0 && levelNumber <= LEVELS.length)
-        : [],
-    };
+    return sanitizeWordGameState(parsedState);
   } catch (error) {
     console.error('Error loading word game state:', error);
     return DEFAULT_WORD_GAME_STATE;
@@ -97,7 +128,7 @@ function readStoredWordGameSoundEnabled() {
   }
 }
 
-type GameSoundKind = 'tap' | 'found' | 'complete' | 'replay';
+type GameSoundKind = 'tap' | 'found' | 'complete' | 'replay' | 'error';
 
 function playGameSound(soundKind: GameSoundKind, audioContextRef: React.MutableRefObject<AudioContext | null>, enabled: boolean) {
   if (!enabled || typeof window === 'undefined') {
@@ -141,6 +172,10 @@ function playGameSound(soundKind: GameSoundKind, audioContextRef: React.MutableR
   const now = context.currentTime;
 
   switch (soundKind) {
+    case 'error':
+      playTone(220, now, 0.12, 0.05);
+      playTone(174.61, now + 0.1, 0.16, 0.06);
+      break;
     case 'complete':
       playTone(523.25, now, 0.14, 0.06);
       playTone(659.25, now + 0.12, 0.16, 0.07);
@@ -170,7 +205,10 @@ export function ChristianGameHub({
   onOpenFavorites,
   onOpenSearch,
   onOpenPlans,
+  onOpenOpinions,
+  onOpenDictionary,
   onOpenUser,
+  onOpenAboutLegal,
   onShare,
   isDarkMode,
   onToggleDarkMode,
@@ -183,11 +221,15 @@ export function ChristianGameHub({
 }: ChristianGameHubProps) {
   const { t, i18n } = useTranslation();
   const currentLanguage = (i18n.resolvedLanguage || i18n.language).startsWith('en') ? 'en' : 'es';
+  const [gameSession] = useState(() => readGameSession());
+  const gameStorageKey = gameSession ? `${WORD_GAME_STORAGE_KEY}:${gameSession.userId}` : null;
   const [view, setView] = useState<GameView>('home');
-  const [gameState, setGameState] = useState<WordGameState>(() => readStoredWordGameState());
-  const [activeLevelNumber, setActiveLevelNumber] = useState<number>(() => readStoredWordGameState().lastPlayedLevel);
+  const [gameState, setGameState] = useState<WordGameState>(() => gameStorageKey ? readStoredWordGameState(gameStorageKey) : DEFAULT_WORD_GAME_STATE);
+  const [activeLevelNumber, setActiveLevelNumber] = useState<number>(() => gameStorageKey ? readStoredWordGameState(gameStorageKey).lastPlayedLevel : 1);
+  const [isRemoteProgressReady, setIsRemoteProgressReady] = useState(() => !gameSession);
   const [board, setBoard] = useState<WordSearchGrid | null>(null);
   const [foundWords, setFoundWords] = useState<string[]>([]);
+  const [hasMadeMistake, setHasMadeMistake] = useState(false);
   const [isLevelComplete, setIsLevelComplete] = useState(false);
   const [levelReward, setLevelReward] = useState(0);
   const [isGameSoundEnabled, setIsGameSoundEnabled] = useState(() => readStoredWordGameSoundEnabled());
@@ -213,13 +255,13 @@ export function ChristianGameHub({
     },
     {
       id: 'daily',
-      label: t('app.search_book'),
+      label: t('menu.search'),
       icon: <Search className="h-5 w-5" />,
       onClick: () => onOpenSearch?.(),
     },
     {
       id: 'favorites',
-      label: currentLanguage === 'en' ? 'Plans' : 'Planes',
+      label: t('menu.plans'),
       icon: <Calendar className="h-5 w-5" />,
       onClick: () => onOpenPlans?.(),
     },
@@ -231,7 +273,7 @@ export function ChristianGameHub({
     },
     {
       id: 'user',
-      label: currentLanguage === 'en' ? 'User' : 'Usuario',
+      label: t('menu.user'),
       icon: <User className="h-5 w-5" />,
       onClick: () => onOpenUser?.(),
     },
@@ -242,8 +284,32 @@ export function ChristianGameHub({
   );
 
   useEffect(() => {
-    window.localStorage.setItem(WORD_GAME_STORAGE_KEY, JSON.stringify(gameState));
-  }, [gameState]);
+    if (!gameStorageKey) return;
+    window.localStorage.setItem(gameStorageKey, JSON.stringify(gameState));
+  }, [gameState, gameStorageKey]);
+
+  useEffect(() => {
+    if (!gameSession) return;
+    let isMounted = true;
+    void loadGameProgress(gameSession.accessToken)
+      .then(({ progress }) => {
+        if (!isMounted || !progress) return;
+        const restoredState = sanitizeWordGameState(progress);
+        setGameState(restoredState);
+        setActiveLevelNumber(restoredState.lastPlayedLevel);
+      })
+      .catch(() => undefined)
+      .finally(() => { if (isMounted) setIsRemoteProgressReady(true); });
+    return () => { isMounted = false; };
+  }, [gameSession]);
+
+  useEffect(() => {
+    if (!gameSession || !isRemoteProgressReady) return;
+    const timeoutId = window.setTimeout(() => {
+      void saveGameProgress(gameSession.accessToken, gameState).catch(() => undefined);
+    }, 500);
+    return () => window.clearTimeout(timeoutId);
+  }, [gameSession, gameState, isRemoteProgressReady]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -267,6 +333,7 @@ export function ChristianGameHub({
 
     setBoard(generateWordSearch(activeLevel.words, activeLevel.gridSize));
     setFoundWords([]);
+    setHasMadeMistake(false);
     setIsLevelComplete(false);
     setLevelReward(0);
     setGameState((previous) => ({
@@ -308,6 +375,7 @@ export function ChristianGameHub({
       const wordReward = 5;
       const didCompleteLevel = nextFoundWords.length === board.words.length;
       const completionBonus = didCompleteLevel ? 25 : 0;
+      const stars = hasMadeMistake ? 2 : 3;
 
       setLevelReward((previousReward) => previousReward + wordReward + completionBonus);
       setGameState((previousState) => {
@@ -318,9 +386,10 @@ export function ChristianGameHub({
 
         return {
           ...previousState,
-          wordsFoundTotal: previousState.wordsFoundTotal + 1,
-          rewardPoints: previousState.rewardPoints + wordReward + completionBonus,
+          wordsFoundTotal: previousState.wordsFoundTotal + (alreadyCompleted ? 0 : 1),
+          rewardPoints: previousState.rewardPoints + (alreadyCompleted ? 0 : wordReward + completionBonus),
           completedLevels,
+          levelStars: didCompleteLevel ? { ...previousState.levelStars, [activeLevel.levelNumber]: stars } : previousState.levelStars,
           currentLevel: didCompleteLevel
             ? Math.min(totalLevels, Math.max(previousState.currentLevel, activeLevel.levelNumber + 1))
             : previousState.currentLevel,
@@ -343,6 +412,7 @@ export function ChristianGameHub({
     playGameSound('replay', audioContextRef, isGameSoundEnabled);
     setBoard(generateWordSearch(activeLevel.words, activeLevel.gridSize));
     setFoundWords([]);
+    setHasMadeMistake(false);
     setIsLevelComplete(false);
     setLevelReward(0);
   };
@@ -351,7 +421,13 @@ export function ChristianGameHub({
     const upcomingLevel = Math.min(activeLevel.levelNumber + 1, totalLevels);
     playGameSound('tap', audioContextRef, isGameSoundEnabled);
     setActiveLevelNumber(upcomingLevel);
+    setIsLevelComplete(false);
     setView('level');
+  };
+
+  const closeLevelComplete = () => {
+    setIsLevelComplete(false);
+    setView('map');
   };
 
   const themeSummaries = THEMES.map((theme) => {
@@ -410,7 +486,7 @@ export function ChristianGameHub({
                 title={isDarkMode ? t('settings.change_to_light') : t('settings.change_to_dark')}
                 aria-label={isDarkMode ? t('settings.change_to_light') : t('settings.change_to_dark')}
               >
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                {isDarkMode ? <Sun className="h-4 w-4 text-amber-300" /> : <Moon className="h-4 w-4 text-rose-400" />}
               </button>
               <button
                 type="button"
@@ -598,7 +674,7 @@ export function ChristianGameHub({
                       </p>
                     </div>
 
-                    <div className="relative mx-auto flex max-w-3xl flex-wrap justify-center gap-4">
+                    <div className="relative mx-auto flex max-w-3xl flex-wrap justify-center gap-3 sm:gap-4">
                       {theme.levelsForTheme.map((level) => {
                         const isCompleted = gameState.completedLevels.includes(level.levelNumber);
                         const isUnlocked = level.levelNumber <= unlockedLevelCount || isCompleted;
@@ -614,7 +690,7 @@ export function ChristianGameHub({
                               }
                             }}
                             className={cn(
-                              'relative flex h-16 w-16 items-center justify-center rounded-full border text-lg font-bold font-serif shadow-lg transition-all',
+                              'relative flex h-12 w-12 items-center justify-center rounded-full border text-sm font-bold font-serif shadow-lg transition-all sm:h-16 sm:w-16 sm:text-lg',
                               isCurrent
                                 ? 'border-[#ffe39a] bg-[#f6c969] text-[#13223a] ring-4 ring-[#f6c969]/25'
                                 : isCompleted
@@ -627,9 +703,7 @@ export function ChristianGameHub({
                             {level.levelNumber}
                             {isCompleted && (
                               <div className="absolute -bottom-2 flex items-center gap-0.5 rounded-full border border-[#f6c969]/20 bg-[#07162b] px-2 py-0.5 shadow-sm">
-                                <Star className="h-2.5 w-2.5 fill-[#f6c969] text-[#f6c969]" />
-                                <Star className="h-2.5 w-2.5 fill-[#f6c969] text-[#f6c969]" />
-                                <Star className="h-2.5 w-2.5 fill-[#f6c969] text-[#f6c969]" />
+                                {[1, 2, 3].map((star) => <Star key={star} className={cn('h-2.5 w-2.5', star <= (gameState.levelStars[level.levelNumber] ?? 3) ? 'fill-[#f6c969] text-[#f6c969]' : 'text-white/25')} />)}
                               </div>
                             )}
                           </button>
@@ -648,10 +722,10 @@ export function ChristianGameHub({
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
-            className="mt-6 grid gap-5 lg:grid-cols-[0.88fr_1.12fr]"
+            className="mt-6 grid gap-4 lg:grid-cols-[0.88fr_1.12fr] lg:gap-5"
           >
             <div className="grid gap-5">
-              <div className="rounded-[34px] border border-[#234770] bg-[radial-gradient(circle_at_top_left,_rgba(95,182,255,0.25),_transparent_34%),linear-gradient(135deg,_#10264d_0%,_#061123_55%,_#0c2241_100%)] p-6 shadow-[0_24px_80px_rgba(3,11,25,0.45)]">
+              <div className="rounded-2xl border border-[#234770] bg-[radial-gradient(circle_at_top_left,_rgba(95,182,255,0.25),_transparent_34%),linear-gradient(135deg,_#10264d_0%,_#061123_55%,_#0c2241_100%)] p-4 shadow-[0_24px_80px_rgba(3,11,25,0.45)] sm:rounded-[34px] sm:p-6">
                 <div className="flex items-center justify-between gap-4">
                   <button
                     type="button"
@@ -666,7 +740,7 @@ export function ChristianGameHub({
                   </span>
                 </div>
 
-                <h2 className="mt-5 font-serif text-4xl font-bold text-white">{activeLevel.themeName}</h2>
+                <h2 className="mt-5 font-serif text-3xl font-bold text-white sm:text-4xl">{activeLevel.themeName}</h2>
                 <p className="mt-3 font-sans text-sm leading-7 text-[#d2e5ff]">
                   {t('game.objective')}
                 </p>
@@ -678,7 +752,7 @@ export function ChristianGameHub({
                 </div>
               </div>
 
-              <div className="rounded-[34px] border border-white/10 bg-[#07162b] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+              <div className="rounded-2xl border border-white/10 bg-[#07162b] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:rounded-[34px] sm:p-6">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#7fb8ff]">{t('game.daily_words')}</p>
@@ -715,11 +789,12 @@ export function ChristianGameHub({
               </div>
             </div>
 
-            <div className="rounded-[34px] border border-white/10 bg-[#07162b] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:p-6">
+            <div className="rounded-2xl border border-white/10 bg-[#07162b] p-3 shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:rounded-[34px] sm:p-6">
               <WordSearchBoard
                 grid={board.grid}
                 words={board.words}
                 onWordFound={handleWordFound}
+                onInvalidSelection={() => { setHasMadeMistake(true); playGameSound('error', audioContextRef, isGameSoundEnabled); }}
               />
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -789,7 +864,7 @@ export function ChristianGameHub({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setView('map')}
+                    onClick={closeLevelComplete}
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/5 px-5 py-3 font-sans text-[11px] font-bold uppercase tracking-[0.22em] text-[#dbecff] transition-all hover:border-[#7dc3ff]/50 hover:bg-[#10284f]"
                   >
                     <Map className="h-4 w-4" />
@@ -802,7 +877,12 @@ export function ChristianGameHub({
         </AnimatePresence>
       </div>
 
-      <MobilePageFooter className="mt-8" />
+      <MobilePageFooter
+        className="mt-8"
+        onOpenAboutLegal={onOpenAboutLegal}
+        onOpenOpinions={onOpenOpinions}
+        onOpenDictionary={onOpenDictionary}
+      />
 
       <MobileBottomNav items={mobileNavItems} />
     </div>

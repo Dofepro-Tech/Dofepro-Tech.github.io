@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Verse, ChapterData, ChatMessage, AiRuntimeConfig } from '@/src/types';
 import { cn } from '@/src/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bird, BookOpen, Heart, MessageCircle, Send, Loader2, Share2, Check, Sparkles, Copy, Cpu } from 'lucide-react';
+import { Bird, BookOpen, Heart, MessageCircle, Send, Loader2, Share2, Check, Sparkles, Copy, Cpu, X, Bookmark } from 'lucide-react';
 import { PanelNavButtons } from '@/src/components/PanelNavButtons';
 import { canUseAiFeatures, chatAboutVerse, explainVerse, getAiRuntimeConfig, getAiUnavailableMessage, getStoredAiModelOverride, setStoredAiModelOverride } from '@/src/services/aiService';
 import Markdown from 'react-markdown';
@@ -14,9 +14,11 @@ interface AIInsightPanelProps {
   chapter: ChapterData | null;
   onClose: () => void;
   onGoHome?: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightPanelProps) {
+export function AIInsightPanel({ verse, chapter, onClose, onGoHome, isFavorite = false, onToggleFavorite }: AIInsightPanelProps) {
   const { t, i18n } = useTranslation();
   const currentLanguage = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
   const aiAvailable = canUseAiFeatures();
@@ -49,6 +51,14 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatHistory, activeTab]);
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
 
   useEffect(() => {
     if (!showModelSelector || !aiAvailable) {
@@ -161,6 +171,17 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
   };
 
   return (
+    <>
+    <motion.button
+      type="button"
+      aria-label={currentLanguage.startsWith('es') ? 'Cerrar panel' : 'Close panel'}
+      tabIndex={-1}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-30 cursor-default bg-black/30"
+    />
     <motion.div
       initial={{ x: '100%', opacity: 0.5 }}
       animate={{ x: 0, opacity: 1 }}
@@ -182,6 +203,15 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
           backLabel={t('app.back')}
           homeLabel={t('app.home')}
         />
+        <button
+          type="button"
+          onClick={onClose}
+          title={currentLanguage.startsWith('es') ? 'Cerrar' : 'Close'}
+          aria-label={currentLanguage.startsWith('es') ? 'Cerrar' : 'Close'}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-olive/10 bg-paper-light text-olive transition-all hover:bg-olive/10"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Share Toast */}
@@ -226,6 +256,18 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
               <Share2 className="w-4 h-4" />
               <span className="text-[10px] uppercase font-bold tracking-tighter">{t('ai.share')}</span>
             </button>
+            {onToggleFavorite && (
+              <button
+                type="button"
+                onClick={onToggleFavorite}
+                className={cn('flex items-center gap-1.5 rounded-full px-3 py-2 text-[10px] font-bold uppercase tracking-tighter transition-all', isFavorite ? 'bg-amber-500/15 text-amber-700' : 'text-olive hover:bg-olive/5')}
+                aria-pressed={isFavorite}
+                title={currentLanguage.startsWith('es') ? (isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos') : (isFavorite ? 'Remove from favorites' : 'Add to favorites')}
+              >
+                <Bookmark className={cn('h-4 w-4', isFavorite && 'fill-current')} />
+                <span>{currentLanguage.startsWith('es') ? (isFavorite ? 'En favoritos' : 'Agregar a favoritos') : (isFavorite ? 'Favorited' : 'Add to favorites')}</span>
+              </button>
+            )}
           </div>
         </div>
         <p className="font-serif text-lg italic text-ink leading-relaxed border-l-2 border-gold pl-4">
@@ -431,6 +473,7 @@ export function AIInsightPanel({ verse, chapter, onClose, onGoHome }: AIInsightP
       </div>
 
     </motion.div>
+    </>
   );
 }
 

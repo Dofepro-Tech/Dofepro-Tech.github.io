@@ -20,6 +20,7 @@ export interface ChapterData {
   num_chapters: number;
   chapter: number;
   vers: Verse[];
+  version?: 'RVR1960' | 'RVR1909' | 'KJV';
 }
 
 export interface BibleSearchResult {
@@ -36,6 +37,8 @@ export interface BibleSearchResponse {
   total: number;
   results: BibleSearchResult[];
   truncated: boolean;
+  incomplete?: boolean;
+  version?: 'RVR1960' | 'RVR1909' | 'KJV';
 }
 
 export interface AiModelOption {

@@ -157,6 +157,8 @@ export function RightSidebar({
 
         {/* Footer info */}
         <div className="p-6 border-t border-olive/10 bg-paper-light text-center shrink-0">
+          <p className="font-serif text-sm italic text-ink-light">Haciéndolo de corazón, como para el Señor.</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-olive/50">Colosenses 3:23</p>
           <p className="text-[10px] text-olive/30 font-sans tracking-wide">
             © 2026 Dofepro-Tech <br/>
             Derechos Reservados

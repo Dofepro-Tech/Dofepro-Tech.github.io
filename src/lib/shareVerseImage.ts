@@ -114,6 +114,30 @@ function drawCoverImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement) 
   ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
 }
 
+function getImageLuminance(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): number {
+  try {
+    const imageData = ctx.getImageData(x, y, width, height);
+    const data = imageData.data;
+    let colorSum = 0;
+
+    // Sample pixels (every 4th pixel for performance)
+    for (let i = 0; i < data.length; i += 16) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      // Standard luminance formula
+      const avg = (0.299 * r + 0.587 * g + 0.114 * b);
+      colorSum += avg;
+    }
+
+    return colorSum / (data.length / 16);
+  } catch (e) {
+    console.warn('Could not analyze image luminance, falling back to dark mode.');
+    return 50; // Default to dark (light text)
+  }
+}
+
 function drawCoverImageInFrame(
   ctx: CanvasRenderingContext2D,
   image: HTMLImageElement,
@@ -203,25 +227,26 @@ function ensureQuotedText(text: string) {
 }
 
 function fitVerseText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxHeight: number) {
-  const fontSizes = [56, 52, 48, 44, 40, 36, 32, 30, 28, 26, 24, 22, 20, 18];
+  // Even larger font sizes for maximum impact
+  const fontSizes = [82, 76, 70, 64, 58, 52, 48, 44, 40, 36, 32, 30, 28];
 
   for (const fontSize of fontSizes) {
-    ctx.font = `600 ${fontSize}px system-ui, sans-serif`;
+    ctx.font = `600 ${fontSize}px "Cormorant Garamond", serif`;
     const lines = wrapText(ctx, text, maxWidth);
-    const lineHeight = fontSize * 1.14;
+    const lineHeight = fontSize * 1.18; // More generous line spacing for readability
 
     if (lines.length * lineHeight <= maxHeight) {
       return { fontSize, lines, lineHeight };
     }
   }
 
-  const fallbackFontSize = 18;
-  ctx.font = `600 ${fallbackFontSize}px system-ui, sans-serif`;
+  const fallbackFontSize = 28; // Larger fallback
+  ctx.font = `600 ${fallbackFontSize}px "Cormorant Garamond", serif`;
   const fallbackLines = wrapText(ctx, text, maxWidth);
   return {
     fontSize: fallbackFontSize,
     lines: fallbackLines,
-    lineHeight: fallbackFontSize * 1.14,
+    lineHeight: fallbackFontSize * 1.18,
   };
 }
 
@@ -314,19 +339,34 @@ export async function createVerseImageAsset({ imageUrl, verseText, reference, ba
   ctx.fill();
   ctx.restore();
 
+  let isDarkImage = true;
   if (coverImage) {
     try {
       drawCoverImageInFrame(ctx, coverImage, imageX, imageY, imageWidth, imageHeight, imageRadius);
 
-      const frameOverlay = ctx.createLinearGradient(imageX, imageY, imageX + imageWidth, imageY + imageHeight);
-      frameOverlay.addColorStop(0, 'rgba(7, 13, 24, 0.24)');
-      frameOverlay.addColorStop(0.45, 'rgba(7, 13, 24, 0.14)');
-      frameOverlay.addColorStop(1, 'rgba(7, 13, 24, 0.74)');
+      // Analyze luminance of the drawn image
+      const luminance = getImageLuminance(ctx, imageX, imageY, imageWidth, imageHeight);
+      isDarkImage = luminance < 155; // Threshold for dark vs light mode
+
+      const frameOverlay = ctx.createLinearGradient(imageX, imageY, imageX, imageY + imageHeight);
+
+      if (isDarkImage) {
+        // Subtle protection for already dark images
+        frameOverlay.addColorStop(0, 'rgba(7, 13, 24, 0.45)');
+        frameOverlay.addColorStop(0.5, 'rgba(7, 13, 24, 0.15)');
+        frameOverlay.addColorStop(1, 'rgba(7, 13, 24, 0.65)');
+      } else {
+        // Stronger top/bottom protection for bright images to ensure text/attribution legibility
+        frameOverlay.addColorStop(0, 'rgba(7, 13, 24, 0.2)');
+        frameOverlay.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+        frameOverlay.addColorStop(1, 'rgba(7, 13, 24, 0.3)');
+      }
+
       ctx.save();
       drawRoundedRect(ctx, imageX, imageY, imageWidth, imageHeight, imageRadius);
       ctx.fillStyle = frameOverlay;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.strokeStyle = isDarkImage ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.12)';
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.restore();
@@ -344,34 +384,47 @@ export async function createVerseImageAsset({ imageUrl, verseText, reference, ba
     ctx.fillStyle = fallbackGradient;
     ctx.fill();
     ctx.restore();
+    isDarkImage = true;
   }
 
   const overlayText = ensureQuotedText(verseText);
-  const verseMaxHeight = imageHeight - 210;
-  const { fontSize: verseFontSize, lines: verseLines, lineHeight } = fitVerseText(ctx, overlayText, imageWidth - 96, verseMaxHeight);
+  const verseMaxHeight = imageHeight - 240;
+  const { fontSize: verseFontSize, lines: verseLines, lineHeight } = fitVerseText(ctx, overlayText, imageWidth - 120, verseMaxHeight);
   const verseHeight = verseLines.length * lineHeight;
-  const verseY = Math.max(imageY + 64, imageY + imageHeight - verseHeight - 132);
+  const verseY = imageY + (imageHeight - verseHeight) / 2 - 30;
 
-  ctx.fillStyle = 'rgba(255,255,255,0.98)';
-  ctx.font = `600 ${verseFontSize}px system-ui, sans-serif`;
+  // Dynamic colors based on image brightness
+  const textColor = isDarkImage ? 'rgba(255,255,255,1)' : 'rgba(7, 22, 43, 0.98)';
+  const shadowColor = isDarkImage ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.75)';
+  const shadowBlur = isDarkImage ? 12 : 6;
+  const shadowOffset = isDarkImage ? 4 : 2;
+
+  ctx.fillStyle = textColor;
+  ctx.font = `600 ${verseFontSize}px "Cormorant Garamond", serif`;
   ctx.textBaseline = 'top';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 6;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = shadowColor;
+  ctx.shadowBlur = shadowBlur;
+  ctx.shadowOffsetY = shadowOffset;
+
+  const centerX = imageX + imageWidth / 2;
 
   verseLines.forEach((line, index) => {
-    ctx.fillText(line, imageX + 48, verseY + index * lineHeight);
+    ctx.fillText(line, centerX, verseY + index * lineHeight);
   });
 
+  // Draw reference centered below the verse
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
-  ctx.font = '800 28px system-ui, sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(reference.toUpperCase(), imageX + imageWidth - 44, imageY + imageHeight - 64);
+  ctx.font = 'italic 700 34px "Cormorant Garamond", serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = isDarkImage ? 'rgba(255,255,255,0.95)' : 'rgba(7, 22, 43, 0.85)';
+  ctx.fillText(reference.toUpperCase(), centerX, verseY + verseHeight + 48);
 
+  // App name attribution at the bottom
   ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(255,255,255,0.58)';
-  ctx.font = '600 20px system-ui, sans-serif';
+  ctx.fillStyle = isDarkImage ? 'rgba(255,255,255,0.6)' : 'rgba(7, 22, 43, 0.5)';
+  ctx.font = '600 22px "Inter", sans-serif';
   ctx.fillText(appName, frameX + 24, frameY + frameHeight - 18);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1));

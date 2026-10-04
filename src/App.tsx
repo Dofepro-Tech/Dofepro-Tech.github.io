@@ -11,10 +11,14 @@ import { BibleReader } from '@/src/components/BibleReader';
 import { HomeScreen } from '@/src/components/HomeScreen';
 import { SearchHub } from '@/src/components/SearchHub';
 import { ReadingPlansHub } from '@/src/components/ReadingPlansHub';
+import { OpinionsHub } from '@/src/components/OpinionsHub';
+import { DictionaryHub } from '@/src/components/DictionaryHub';
 import { UserAccessHub } from '@/src/components/UserAccessHub';
 import { ShareSheet } from '@/src/components/ShareSheet';
+import { DownloadAppModal } from '@/src/components/DownloadAppModal';
 import { SplashScreen } from '@/src/components/SplashScreen';
 import { RandomVerseModal } from '@/src/components/RandomVerseModal';
+import { AboutLegalModal, type AboutLegalType } from '@/src/components/AboutLegalModal';
 import { FALLBACK_BIBLE_BOOKS } from '@/src/lib/fallbackBooks';
 import { fetchBooks, fetchChapter } from '@/src/services/bibleApi';
 import type { Book, Bookmark, ChapterData, SidebarBookFilter, Verse } from '@/src/types';
@@ -29,9 +33,9 @@ import { useReaderLibrary } from '@/src/hooks/useReaderLibrary';
 import { useReadingChallenges } from '@/src/hooks/useReadingChallenges';
 import { dismissAppUpdateVersion, fetchLatestAppUpdate, getAppUpdateTargetUrl, getCurrentAppVersion, getDismissedAppUpdateVersion, shouldPromptForAppUpdate, type AppUpdateManifest } from '@/src/lib/appUpdate';
 import { getBackendStatusSnapshot, getBackendWarmupDescription, getBackendWarmupTitle, subscribeBackendStatus, type BackendStatusSnapshot, warmBackendIfLikelyNeeded } from '@/src/lib/backendStatus';
-import { getAppShareUrl, shareContent, shareInstalledAndroidApp, type SharePayload } from '@/src/lib/share';
+import { buildAppShareMessage, getAppApkUrl, getAppShareUrl, shareContent, shareInstalledAndroidApp, type SharePayload } from '@/src/lib/share';
 import { getRandomStartupVerse, hydrateStartupVerse } from '@/src/lib/dailyVerse';
-import { Loader2 } from 'lucide-react';
+import { Github, Globe, Linkedin, Loader2 } from 'lucide-react';
 
 function normalizeBookKey(value: string) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -78,16 +82,15 @@ const LazyChristianGameHub = lazyWithRetry(
   'christian-game-hub',
 );
 
-type MainView = 'home' | 'reader' | 'game' | 'search' | 'plans' | 'profile';
+type MainView = 'home' | 'reader' | 'game' | 'search' | 'plans' | 'profile' | 'opinions' | 'dictionary';
+
+import { initAnalytics, trackEvent } from '@/src/lib/analytics';
 
 export default function App() {
   const { i18n, t } = useTranslation();
   const currentLang = normalizeAppLanguage(i18n.resolvedLanguage || i18n.language);
   const currentAppVersion = getCurrentAppVersion();
-  const isNativePlatform = typeof window !== 'undefined' && Capacitor.isNativePlatform();
-  const showPortfolioReturn = !isNativePlatform
-    && typeof window !== 'undefined'
-    && new URLSearchParams(window.location.search).get('desde') === 'portafolio';
+  const isNativePlatform = typeof window !== 'undefined' && (Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'web');
   const minimumSplashDuration = isNativePlatform ? 520 : 3200;
   const bootstrapFallbackDuration = isNativePlatform ? 2600 : 5600;
 
@@ -98,10 +101,16 @@ export default function App() {
   const [favoriteToPlay, setFavoriteToPlay] = useState<Bookmark | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null);
+  const [suppressVersePanel, setSuppressVersePanel] = useState(false);
   const [pendingVerseNumber, setPendingVerseNumber] = useState<number | null>(null);
+  const [chapterFetchRequestId, setChapterFetchRequestId] = useState(0);
   const [verseFocusRequestId, setVerseFocusRequestId] = useState(0);
   const [pendingStartupVerse, setPendingStartupVerse] = useState<{ bookAbrev: string; chapter: number; verseNumber: number } | null>(null);
-  const [mainView, setMainView] = useState<MainView>('home');
+  const [mainView, setMainView] = useState<MainView>(() => {
+    if (typeof window === 'undefined') return 'home';
+    if (['callback', 'confirmed'].includes(new URLSearchParams(window.location.search).get('auth') ?? '')) return 'profile';
+    return localStorage.getItem('bible_startup_page') === 'reader' ? 'reader' : 'home';
+  });
   const [viewHistory, setViewHistory] = useState<MainView[]>([]);
   const [sidebarFilter, setSidebarFilter] = useState<SidebarBookFilter>('all');
   const [isBootSplashVisible, setIsBootSplashVisible] = useState(!isNativePlatform);
@@ -112,8 +121,38 @@ export default function App() {
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isStudyModeOpen, setIsStudyModeOpen] = useState(false);
   const [isDailyExperienceOpen, setIsDailyExperienceOpen] = useState(false);
+  const [aboutLegalState, setAboutLegalState] = useState<{ isOpen: boolean, type: AboutLegalType }>({ isOpen: false, type: 'mission' });
+
+  const handleOpenAboutLegal = useEffectEvent((type: AboutLegalType) => {
+    setAboutLegalState({ isOpen: true, type });
+  });
+
+  const [activeSearchQuery, setActiveSearchQuery] = useState<string | undefined>(undefined);
+
+  // Sistema de Analíticas optimizado para la v1.0.4
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  useEffect(() => {
+    if (!isNativePlatform) return undefined;
+    const handleOAuthDeepLink = ({ url }: { url: string }) => {
+      if (!url.startsWith('com.dofepro.biblianj://auth/callback')) return;
+      window.localStorage.setItem('biblia_nj_google_callback_url', url);
+      setMainView('profile');
+      window.setTimeout(() => window.dispatchEvent(new Event('biblia-google-oauth-callback')), 0);
+    };
+    const listener = CapacitorApp.addListener('appUrlOpen', handleOAuthDeepLink);
+    void CapacitorApp.getLaunchUrl().then((launch) => {
+      if (launch?.url) handleOAuthDeepLink({ url: launch.url });
+    });
+    return () => { void listener.then((entry) => entry.remove()); };
+  }, [isNativePlatform]);
+
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [readerSelectorRequestId, setReaderSelectorRequestId] = useState(0);
+  const [bookPickerFilter, setBookPickerFilter] = useState<SidebarBookFilter>('all');
   const [isDesktopViewport, setIsDesktopViewport] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth >= 1024));
   const [hasAppliedSharedReaderTarget, setHasAppliedSharedReaderTarget] = useState(false);
   const [availableAppUpdate, setAvailableAppUpdate] = useState<AppUpdateManifest | null>(null);
@@ -125,7 +164,7 @@ export default function App() {
   // Versículo diario persistente por fecha
   const [startupVerse, setStartupVerse] = useState(() => {
     if (typeof window !== 'undefined') {
-      const cached = window.localStorage.getItem('biblia-nj-daily-verse-cache:' + new Date().toISOString().slice(0, 10) + ':' + currentLang);
+      const cached = window.localStorage.getItem('biblia-dj-daily-verse-cache:' + new Date().toISOString().slice(0, 10) + ':' + currentLang);
       if (cached) {
         try {
           return JSON.parse(cached);
@@ -144,6 +183,12 @@ export default function App() {
     setAccentColor,
     voiceURI,
     setVoiceURI,
+    keepScreenOn,
+    setKeepScreenOn,
+    startupPage,
+    setStartupPage,
+    homeSections,
+    setHomeSections,
   } = useReaderPreferences();
   const {
     highlights,
@@ -160,6 +205,39 @@ export default function App() {
     trackSearchQuery,
     trackBookmarkSaved,
   } = useReadingChallenges();
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('wakeLock' in navigator) || !keepScreenOn) {
+      return undefined;
+    }
+
+    let wakeLock: any = null;
+
+    const requestWakeLock = async () => {
+      try {
+        wakeLock = await (navigator as any).wakeLock.request('screen');
+      } catch (err) {
+        console.error('Failed to acquire wake lock:', err);
+      }
+    };
+
+    void requestWakeLock();
+
+    const handleVisibilityChange = () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        void requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLock) {
+        void wakeLock.release();
+      }
+    };
+  }, [keepScreenOn]);
 
   const findBookByAbrev = (bookAbrev: string) => books.find(
     (book) => normalizeBookKey(book.abrev) === normalizeBookKey(bookAbrev),
@@ -196,18 +274,25 @@ export default function App() {
 
   const handleShareApp = async () => {
     const shareUrl = getAppShareUrl();
+    const shareText = buildAppShareMessage({
+      title: t('app.title'),
+      message: t('app.share_app_message'),
+      webUrl: shareUrl,
+      apkUrl: getAppApkUrl(),
+      language: i18n.language,
+    });
     const shareData = {
       title: t('app.title'),
-      text: t('app.share_app_message'),
+      text: shareText,
       url: shareUrl,
     };
 
-    if (!shareUrl) {
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
       const apkShareResult = await shareInstalledAndroidApp({
-        title: t('app.title'),
-        text: t('app.share_app_android_apk'),
-        fileName: 'biblia-dj-android.apk',
+        title: shareData.title,
+        text: shareData.text,
         dialogTitle: t('menu.share'),
+        fileName: 'biblia-dj-android.apk',
       });
 
       if (apkShareResult === 'shared' || apkShareResult === 'cancelled') {
@@ -215,7 +300,12 @@ export default function App() {
       }
     }
 
-    await handleShareContent(shareData);
+    const shareResult = await shareContent(shareData);
+    if (shareResult !== 'unsupported') {
+      return;
+    }
+
+    openShareSheet(shareData);
   };
 
   const handleOpenAppUpdate = useEffectEvent(async () => {
@@ -236,12 +326,18 @@ export default function App() {
   });
 
   const openReaderLocation = (book: Book, chapter: number, verseNumber?: number | null) => {
+    const canFocusLoadedVerse = verseNumber != null
+      && selectedBook?.abrev.toUpperCase() === book.abrev.toUpperCase()
+      && selectedChapter === chapter
+      && chapterData?.chapter === chapter;
+    const loadedVerse = canFocusLoadedVerse ? chapterData?.vers.find((verse) => verse.number === verseNumber) : undefined;
     setSelectedBook(book);
     setSelectedChapter(chapter);
-    setSelectedVerse(null);
+    setSelectedVerse(loadedVerse ?? null);
     setPendingVerseNumber(verseNumber ?? null);
     if (verseNumber != null) {
       setVerseFocusRequestId((current) => current + 1);
+      if (!loadedVerse) setChapterFetchRequestId((current) => current + 1);
     }
     navigateToMainView('reader');
     setIsSidebarOpen(false);
@@ -249,9 +345,14 @@ export default function App() {
     setIsDailyExperienceOpen(false);
   };
 
-  const openSidebar = (filter: SidebarBookFilter = 'all') => {
+  const openSidebar = (filter: SidebarBookFilter = 'all', andNavigate = false) => {
     setSidebarFilter(filter);
-    setIsSidebarOpen(true);
+    if (andNavigate) {
+      navigateToMainView('reader');
+      setIsSidebarOpen(false);
+    } else {
+      setIsSidebarOpen(true);
+    }
   };
 
   const openGameHub = () => {
@@ -261,7 +362,8 @@ export default function App() {
     setIsRightSidebarOpen(false);
   };
 
-  const openSearchHub = () => {
+  const openSearchHub = (query?: string) => {
+    setActiveSearchQuery(typeof query === 'string' ? query : undefined);
     navigateToMainView('search');
     setSelectedVerse(null);
     setIsSidebarOpen(false);
@@ -298,6 +400,11 @@ export default function App() {
     setIsRightSidebarOpen(false);
     setIsDailyExperienceOpen(false);
     setReaderSelectorRequestId((current) => current + 1);
+  };
+
+  const openBookPicker = (filter: SidebarBookFilter) => {
+    setBookPickerFilter(filter);
+    openReaderSelector();
   };
 
   const handleContinueReading = () => {
@@ -525,6 +632,7 @@ export default function App() {
         }
 
         setChapterData(data);
+        void trackEvent({ name: 'bible_read', params: { book: selectedBook.abrev, chapter: selectedChapter } });
         trackChapterRead(selectedBook.abrev, selectedChapter);
         if (pendingVerseNumber) {
           const pendingVerse = data.vers.find((verse) => verse.number === pendingVerseNumber);
@@ -549,7 +657,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedBook, selectedChapter, currentLang, pendingVerseNumber]);
+  }, [selectedBook, selectedChapter, currentLang, chapterFetchRequestId]);
 
   useEffect(() => {
     if (!isNativePlatform) {
@@ -637,7 +745,12 @@ export default function App() {
   };
 
   const handleSelectVerse = (verse: Verse) => {
-    setSelectedVerse((current) => current?.id === verse.id ? null : verse);
+    if (suppressVersePanel && selectedVerse?.id === verse.id) {
+      setSelectedVerse(verse);
+    } else {
+      setSelectedVerse((current) => current?.id === verse.id ? null : verse);
+    }
+    setSuppressVersePanel(false);
     setIsSidebarOpen(false);
 
     if (selectedBook && chapterData) {
@@ -661,10 +774,26 @@ export default function App() {
 
   // Navega y enfoca el versículo solicitado desde cualquier parte de la app
   const handleNavigateToVerse = (bookAbrev: string, chapter: number, verseNumber: number) => {
+    setSuppressVersePanel(true);
+    setReaderSelectorRequestId(0);
     const book = findBookByAbrev(bookAbrev);
     if (!book) {
       setSelectedVerse(null);
       setPendingStartupVerse({ bookAbrev, chapter, verseNumber });
+      navigateToMainView('reader');
+      setIsSidebarOpen(false);
+      setIsRightSidebarOpen(false);
+      setIsDailyExperienceOpen(false);
+      return;
+    }
+    const isCurrentChapter = selectedBook?.abrev.toUpperCase() === book.abrev.toUpperCase()
+      && selectedChapter === chapter
+      && chapterData?.chapter === chapter;
+    const loadedVerse = isCurrentChapter ? chapterData?.vers.find((verse) => verse.number === verseNumber) : undefined;
+    if (loadedVerse) {
+      setSelectedVerse(loadedVerse);
+      setPendingVerseNumber(null);
+      setVerseFocusRequestId((current) => current + 1);
       navigateToMainView('reader');
       setIsSidebarOpen(false);
       setIsRightSidebarOpen(false);
@@ -679,6 +808,7 @@ export default function App() {
       verse: '', // El texto se cargará en BibleReader
     });
     setPendingVerseNumber(verseNumber);
+    setChapterFetchRequestId((current) => current + 1);
     setVerseFocusRequestId((current) => current + 1);
     navigateToMainView('reader');
     setIsSidebarOpen(false);
@@ -777,6 +907,18 @@ export default function App() {
     };
   }, [handleAndroidBackButton, isNativePlatform]);
 
+  const selectedVerseFavorite = selectedVerse && selectedBook && chapterData
+    ? bookmarks.find((bookmark) => bookmark.bookAbrev.toUpperCase() === selectedBook.abrev.toUpperCase() && bookmark.chapter === chapterData.chapter && bookmark.verseNumber === selectedVerse.number)
+    : undefined;
+  const toggleSelectedVerseFavorite = () => {
+    if (!selectedVerse || !selectedBook || !chapterData) return;
+    if (selectedVerseFavorite) {
+      handleRemoveBookmark(selectedVerseFavorite.id);
+      return;
+    }
+    handleAddReaderBookmark(selectedBook.abrev, chapterData.chapter, selectedVerse.number, `${selectedBook.names[0]} ${chapterData.chapter}:${selectedVerse.number}`);
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-paper transition-colors duration-300">
       <Sidebar 
@@ -796,8 +938,30 @@ export default function App() {
         onShare={handleShareApp}
         onGoHome={handleGoHome}
         onOpenReader={openReaderSelector}
+        onOpenSearch={openSearchHub}
+        onOpenPlans={openReadingPlansHub}
+        onOpenOpinions={() => navigateToMainView('opinions')}
+        onOpenDictionary={() => navigateToMainView('dictionary')}
+        onOpenUser={openUserHub}
+        onOpenAboutLegal={handleOpenAboutLegal}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+        bookmarks={bookmarks}
+        onSelectBookmark={handleSelectBookmark}
+        onRemoveBookmark={handleRemoveBookmark}
+        onPlayFavorite={(b) => setFavoriteToPlay(b)}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        accentColor={accentColor}
+        setAccentColor={setAccentColor}
+        voiceURI={voiceURI}
+        setVoiceURI={setVoiceURI}
+        keepScreenOn={keepScreenOn}
+        setKeepScreenOn={setKeepScreenOn}
+        startupPage={startupPage}
+        setStartupPage={setStartupPage}
+        homeSections={homeSections}
+        setHomeSections={setHomeSections}
       />
 
       <RightSidebar 
@@ -810,8 +974,7 @@ export default function App() {
         onGoHome={handleGoHome}
       />
       
-      <div className="flex min-w-0 flex-1 flex-col">
-      <main className="relative min-h-0 flex-1">
+      <main className="flex-1 min-w-0 relative h-full">
         <AnimatePresence>
           {!isBootSplashVisible && backendStatus.phase === 'waking' && (
             <motion.div
@@ -839,10 +1002,12 @@ export default function App() {
 
         {mainView === 'home' ? (
           <HomeScreen
+            isNativeApp={isNativePlatform}
             books={books}
             selectedBook={selectedBook}
             selectedChapter={selectedChapter}
             bookmarksCount={bookmarks.length}
+            bookmarks={bookmarks}
             challengeSummary={challengeSummary}
             isDarkMode={isDarkMode}
             onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
@@ -852,9 +1017,18 @@ export default function App() {
             setAccentColor={setAccentColor}
             voiceURI={voiceURI}
             setVoiceURI={setVoiceURI}
+            keepScreenOn={keepScreenOn}
+            setKeepScreenOn={setKeepScreenOn}
+            startupPage={startupPage}
+            setStartupPage={setStartupPage}
+            homeSections={homeSections}
+            setHomeSections={setHomeSections}
+            onSelectBook={handleSelectBook}
+            onSelectChapter={handleSelectChapter}
             onShare={handleShareApp}
             onMenuClick={() => openSidebar('all')}
             onOpenBooks={openSidebar}
+            onOpenBookPicker={openBookPicker}
             onContinueReading={handleContinueReading}
             onOpenReaderSelector={openReaderSelector}
             onOpenStudy={() => setIsStudyModeOpen(true)}
@@ -863,15 +1037,22 @@ export default function App() {
             onOpenGame={openGameHub}
             onOpenSearch={openSearchHub}
             onOpenPlans={openReadingPlansHub}
+            onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
+            onOpenOpinions={() => navigateToMainView('opinions')}
+            onOpenDictionary={() => navigateToMainView('dictionary')}
             onOpenUser={openUserHub}
+            onOpenAboutLegal={handleOpenAboutLegal}
             onGoHome={handleGoHome}
             onOpenVerse={handleNavigateToVerse}
-            showPortfolioReturn={showPortfolioReturn}
+            onAddBookmark={handleAddReaderBookmark}
+            onRemoveBookmark={handleRemoveBookmark}
             onShareContent={handleShareContent}
             availableAppUpdate={availableAppUpdate ? {
               version: availableAppUpdate.version,
               currentVersion: currentAppVersion,
               publishedAt: availableAppUpdate.publishedAt,
+              notes: availableAppUpdate.notes,
+              notesEn: availableAppUpdate.notesEn,
             } : null}
             onOpenAppUpdate={() => { void handleOpenAppUpdate(); }}
             onDismissAppUpdate={handleDismissAppUpdate}
@@ -881,7 +1062,7 @@ export default function App() {
             <LazyChristianGameHub
               onBack={handleGoBack}
               onGoHome={handleGoHome}
-              onOpenBooks={() => openSidebar('all')}
+              onOpenBooks={openReaderSelector}
               onOpenStudy={() => setIsStudyModeOpen(true)}
               onOpenDailyExperience={() => setIsDailyExperienceOpen(true)}
               onOpenFavorites={() => setIsRightSidebarOpen(true)}
@@ -897,16 +1078,19 @@ export default function App() {
               onOpenSearch={openSearchHub}
               onOpenPlans={openReadingPlansHub}
               onOpenUser={openUserHub}
+              onOpenAboutLegal={handleOpenAboutLegal}
             />
           </Suspense>
         ) : mainView === 'search' ? (
           <SearchHub
+            initialQuery={activeSearchQuery}
             onGoBack={handleGoBack}
             onGoHome={handleGoHome}
             onOpenReader={openReaderSelector}
             onOpenPlans={openReadingPlansHub}
             onOpenFavorites={() => setIsRightSidebarOpen(true)}
             onOpenUser={openUserHub}
+            onOpenAboutLegal={handleOpenAboutLegal}
             onOpenVerse={handleNavigateToVerse}
           />
         ) : mainView === 'plans' ? (
@@ -917,6 +1101,7 @@ export default function App() {
             onOpenSearch={openSearchHub}
             onOpenFavorites={() => setIsRightSidebarOpen(true)}
             onOpenUser={openUserHub}
+            onOpenAboutLegal={handleOpenAboutLegal}
           />
         ) : mainView === 'profile' ? (
           <UserAccessHub
@@ -926,9 +1111,31 @@ export default function App() {
             onOpenSearch={openSearchHub}
             onOpenPlans={openReadingPlansHub}
             onOpenFavorites={() => setIsRightSidebarOpen(true)}
+            onOpenAboutLegal={handleOpenAboutLegal}
+          />
+        ) : mainView === 'opinions' ? (
+          <OpinionsHub
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onOpenReader={() => navigateToMainView('reader')}
+            onOpenPlans={openReadingPlansHub}
+            onOpenFavorites={() => setIsRightSidebarOpen(true)}
+            onOpenUser={openUserHub}
+            onOpenAboutLegal={handleOpenAboutLegal}
+          />
+        ) : mainView === 'dictionary' ? (
+          <DictionaryHub
+            onGoBack={handleGoBack}
+            onGoHome={handleGoHome}
+            onOpenReader={() => navigateToMainView('reader')}
+            onOpenPlans={openReadingPlansHub}
+            onOpenFavorites={() => setIsRightSidebarOpen(true)}
+            onOpenUser={openUserHub}
+            onOpenAboutLegal={handleOpenAboutLegal}
           />
         ) : (
           <BibleReader 
+            isNativeApp={isNativePlatform}
             chapterData={chapterData} 
             isLoading={isLoading} 
             selectedVerse={selectedVerse} 
@@ -964,19 +1171,25 @@ export default function App() {
             challengeSummary={challengeSummary}
             onGoBack={handleGoBack}
             onGoHome={handleGoHome}
+            onOpenBooks={openSidebar}
             onOpenGame={openGameHub}
             onOpenSearch={openSearchHub}
             onOpenPlans={openReadingPlansHub}
+            onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
+            onOpenOpinions={() => navigateToMainView('opinions')}
+            onOpenDictionary={() => navigateToMainView('dictionary')}
             onOpenUser={openUserHub}
+            onOpenAboutLegal={handleOpenAboutLegal}
+            onOpenStudy={() => setIsStudyModeOpen(true)}
             readerSelectorRequestId={readerSelectorRequestId}
+            onReaderSelectorRequestHandled={() => setReaderSelectorRequestId(0)}
+            bookPickerFilter={bookPickerFilter}
             verseFocusRequestId={verseFocusRequestId}
-            showPortfolioReturn={showPortfolioReturn}
             onShareContent={handleShareContent}
             onClearSelectedVerse={() => setSelectedVerse(null)}
           />
         )}
       </main>
-      </div>
 
       <Suspense fallback={null}>
         <AnimatePresence>
@@ -1002,19 +1215,21 @@ export default function App() {
 
       <Suspense fallback={null}>
         <AnimatePresence>
-          {selectedVerse && chapterData && mainView === 'reader' && isDesktopViewport && (
+          {selectedVerse && chapterData && mainView === 'reader' && isDesktopViewport && !suppressVersePanel && (
             <LazyAIInsightPanel 
               verse={selectedVerse} 
               chapter={chapterData} 
               onClose={() => setSelectedVerse(null)} 
               onGoHome={handleGoHome}
+              isFavorite={!!selectedVerseFavorite}
+              onToggleFavorite={toggleSelectedVerseFavorite}
             />
           )}
         </AnimatePresence>
       </Suspense>
 
       <AnimatePresence>
-        {isBootSplashVisible && <SplashScreen />}
+        {isBootSplashVisible && <SplashScreen isReady={hasCompletedBootstrap && hasMinimumSplashTimePassed} />}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -1050,6 +1265,19 @@ export default function App() {
         title={sharePayload.title}
         text={sharePayload.text}
         url={sharePayload.url}
+      />
+
+      <DownloadAppModal
+        isOpen={isDownloadModalOpen}
+        onClose={() => setIsDownloadModalOpen(false)}
+        isDarkMode={isDarkMode}
+      />
+
+      <AboutLegalModal
+        isOpen={aboutLegalState.isOpen}
+        type={aboutLegalState.type}
+        onClose={() => setAboutLegalState(prev => ({ ...prev, isOpen: false }))}
+        isDarkMode={isDarkMode}
       />
     </div>
   );

@@ -10,6 +10,7 @@ export interface AppUpdateManifest {
   publishedAt?: string;
   channel?: string;
   notes?: string[];
+  notesEn?: string[];
 }
 
 function parseVersionParts(version: string) {
@@ -117,6 +118,9 @@ export async function fetchLatestAppUpdate(signal?: AbortSignal) {
     channel: typeof payload.channel === 'string' ? payload.channel : undefined,
     notes: Array.isArray(payload.notes)
       ? payload.notes.filter((note): note is string => typeof note === 'string' && note.trim().length > 0)
+      : undefined,
+    notesEn: Array.isArray(payload.notesEn)
+      ? payload.notesEn.filter((note): note is string => typeof note === 'string' && note.trim().length > 0)
       : undefined,
   } satisfies AppUpdateManifest;
 }

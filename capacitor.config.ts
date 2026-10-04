@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Bíblia DJ',
   webDir: 'dist',
   server: {
-    cleartext: true,
+    cleartext: false,
   },
   backgroundColor: '#0b1f4f',
 };

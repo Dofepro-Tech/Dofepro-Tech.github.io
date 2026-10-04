@@ -146,22 +146,10 @@ async function searchBibleByReference(query: string, lang: string, limit: number
 }
 
 export async function fetchBooks(): Promise<Book[]> {
-  try {
-    const res = await fetch(`${BASE_URL}/books`);
-    if (!res.ok) {
-      throw new Error('Failed to fetch books');
-    }
-
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) {
-      throw new Error('Empty book catalog');
-    }
-
-    return data as Book[];
-  } catch (error) {
-    console.warn('Falling back to bundled Bible catalog.', error);
-    return FALLBACK_BIBLE_BOOKS;
-  }
+  // The bundled catalog is the source of truth for book names and chapter counts.
+  // Fetching this from the third-party API in a browser fails on CORS and can
+  // leave later chapter requests using names the configured backend cannot map.
+  return FALLBACK_BIBLE_BOOKS;
 }
 
 /**
@@ -185,12 +173,13 @@ export async function fetchChapter(bookName: string, chapter: number, lang: stri
   return res.json();
 }
 
-export async function searchBible(query: string, lang: string = 'es', limit: number = 60): Promise<BibleSearchResponse> {
+export async function searchBible(query: string, lang: string = 'es', limit: number = 60, offset = 0): Promise<BibleSearchResponse> {
   const normalizedLanguage = normalizeAppLanguage(lang);
   const params = new URLSearchParams({
     query,
     lang: normalizedLanguage,
     limit: String(limit),
+    offset: String(Math.max(0, Math.floor(offset))),
   });
 
   const fallbackReferenceSearch = async () => {

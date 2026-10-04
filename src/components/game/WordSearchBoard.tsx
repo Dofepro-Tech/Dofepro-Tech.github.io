@@ -7,12 +7,14 @@ interface WordSearchBoardProps {
   grid: GridCell[][];
   words: PlacedWord[];
   onWordFound: (word: PlacedWord) => void;
+  onInvalidSelection: () => void;
 }
 
-export function WordSearchBoard({ grid, words, onWordFound }: WordSearchBoardProps) {
+export function WordSearchBoard({ grid, words, onWordFound, onInvalidSelection }: WordSearchBoardProps) {
   const [localGrid, setLocalGrid] = useState<GridCell[][]>(grid);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionPositions, setSelectionPositions] = useState<Array<{ x: number; y: number }>>([]);
+  const [invalidSelectionPositions, setInvalidSelectionPositions] = useState<Array<{ x: number; y: number }>>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,6 +99,10 @@ export function WordSearchBoard({ grid, words, onWordFound }: WordSearchBoardPro
           return rest as GridCell;
         })));
       }, 500);
+    } else {
+      setInvalidSelectionPositions(selectionPositions);
+      onInvalidSelection();
+      window.setTimeout(() => setInvalidSelectionPositions([]), 350);
     }
 
     setSelectionPositions([]);
@@ -138,7 +144,7 @@ export function WordSearchBoard({ grid, words, onWordFound }: WordSearchBoardPro
   return (
     <div
       ref={containerRef}
-      className="grid aspect-square w-full touch-none select-none overflow-hidden rounded-[30px] border border-white/12 bg-[#061223] p-2 shadow-inner sm:p-4"
+      className="mx-auto grid aspect-square w-full max-w-[34rem] touch-none select-none overflow-hidden rounded-2xl border border-white/12 bg-[#061223] p-1.5 shadow-inner sm:rounded-[30px] sm:p-4"
       style={{
         gridTemplateColumns: `repeat(${grid.length}, 1fr)`,
         gridTemplateRows: `repeat(${grid.length}, 1fr)`,
@@ -176,17 +182,19 @@ export function WordSearchBoard({ grid, words, onWordFound }: WordSearchBoardPro
           onMouseDown={() => handleStart(x, y)}
           onTouchStart={() => handleStart(x, y)}
           className={cn(
-            'flex aspect-square items-center justify-center overflow-hidden rounded-2xl border text-center font-bold transition-all duration-150',
+            'flex aspect-square items-center justify-center overflow-hidden rounded-lg border text-center font-bold transition-all duration-150 sm:rounded-2xl',
             cell.justFound
               ? 'scale-105 border-emerald-400 bg-emerald-400 text-white shadow-lg'
               : cell.isPartOfFoundWord
                 ? 'border-[#f6c969]/45 bg-[#f6c969]/18 text-[#ffe39a] shadow-sm'
+                : invalidSelectionPositions.some((position) => position.x === cell.x && position.y === cell.y)
+                  ? 'border-rose-400 bg-rose-500/30 text-white shadow-sm'
                 : cell.highlighted
                   ? 'scale-[1.04] border-[#7dc3ff] bg-[#17406f] text-white shadow-sm'
                   : 'border-white/10 bg-white/6 text-[#e3f0ff]'
           )}
           style={{
-            fontSize: `min(calc(100vw / ${grid.length} * 0.5), 24px)`,
+            fontSize: grid.length > 14 ? '0.7rem' : grid.length > 10 ? '0.85rem' : '1rem',
           }}
         >
           {cell.letter}

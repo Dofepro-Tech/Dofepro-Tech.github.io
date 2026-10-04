@@ -1,8 +1,10 @@
+// Reset file to fix corruption
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Calendar, ChevronLeft, Eye, Heart, House, Search, Share2, User, Bookmark, Play, Users } from 'lucide-react';
 import { MobileBottomNav, MobilePageFooter } from '@/src/components/MobileBottomNav';
 import { shareResource } from '@/src/lib/shareResource';
 import { openExternalUrl } from '@/src/lib/openExternalUrl';
+import { type AboutLegalType } from '@/src/components/AboutLegalModal';
 import { cn } from '@/src/lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -13,6 +15,9 @@ interface ReadingPlansHubProps {
   onOpenSearch: () => void;
   onOpenFavorites: () => void;
   onOpenUser: () => void;
+  onOpenOpinions?: () => void;
+  onOpenDictionary?: () => void;
+  onOpenAboutLegal?: (type: AboutLegalType) => void;
 }
 
 type PlansTab = 'explore' | 'mine' | 'saved' | 'completed';
@@ -76,8 +81,8 @@ function readPlanState() {
   }
 }
 
-export function ReadingPlansHub({ onGoBack, onGoHome, onOpenReader, onOpenSearch, onOpenFavorites, onOpenUser }: ReadingPlansHubProps) {
-  const { i18n } = useTranslation();
+export function ReadingPlansHub({ onGoBack, onGoHome, onOpenReader, onOpenSearch, onOpenFavorites, onOpenUser, onOpenOpinions, onOpenDictionary, onOpenAboutLegal }: ReadingPlansHubProps) {
+  const { t, i18n } = useTranslation();
   const currentLanguage = (i18n.resolvedLanguage || i18n.language).startsWith('en') ? 'en' : 'es';
   const [activeTab, setActiveTab] = useState<PlansTab>('explore');
   const [durationFilter, setDurationFilter] = useState<'all' | 7 | 15 | 30 | 90>('all');
@@ -139,10 +144,10 @@ export function ReadingPlansHub({ onGoBack, onGoHome, onOpenReader, onOpenSearch
   const mobileNavItems = useMemo(() => ([
     { id: 'home', label: currentLanguage === 'en' ? 'Home' : 'Inicio', icon: <House className="h-5 w-5" />, onClick: onGoHome },
     { id: 'reader', label: currentLanguage === 'en' ? 'Bible' : 'Biblia', icon: <BookOpen className="h-5 w-5" />, onClick: onOpenReader },
-    { id: 'search', label: currentLanguage === 'en' ? 'Search' : 'Buscar', icon: <Search className="h-5 w-5" />, onClick: onOpenSearch },
-    { id: 'plans', label: currentLanguage === 'en' ? 'Plans' : 'Planes', icon: <Calendar className="h-5 w-5" />, onClick: () => undefined, active: true },
-    { id: 'favorites', label: currentLanguage === 'en' ? 'Saved' : 'Guardados', icon: <Heart className="h-5 w-5" />, onClick: onOpenFavorites },
-    { id: 'user', label: currentLanguage === 'en' ? 'User' : 'Usuario', icon: <User className="h-5 w-5" />, onClick: onOpenUser },
+    { id: 'search', label: t('menu.search'), icon: <Search className="h-5 w-5" />, onClick: onOpenSearch },
+    { id: 'plans', label: t('menu.plans'), icon: <Calendar className="h-5 w-5" />, onClick: () => undefined, active: true },
+    { id: 'favorites', label: t('menu.favorites'), icon: <Heart className="h-5 w-5" />, onClick: onOpenFavorites },
+    { id: 'user', label: t('menu.user'), icon: <User className="h-5 w-5" />, onClick: onOpenUser },
   ]), [currentLanguage, onGoHome, onOpenFavorites, onOpenReader, onOpenSearch, onOpenUser]);
 
   const toggleSaved = (planId: string) => {
@@ -289,7 +294,12 @@ export function ReadingPlansHub({ onGoBack, onGoHome, onOpenReader, onOpenSearch
           )}
         </div>
 
-        <MobilePageFooter className="mt-8" />
+        <MobilePageFooter
+          className="mt-8"
+          onOpenAboutLegal={onOpenAboutLegal}
+          onOpenOpinions={onOpenOpinions}
+          onOpenDictionary={onOpenDictionary}
+        />
       </div>
 
       <MobileBottomNav items={mobileNavItems} />

@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Book, SidebarBookFilter } from '@/src/types';
+import type { Book, Bookmark, SidebarBookFilter } from '@/src/types';
+import type { AboutLegalType } from '@/src/components/AboutLegalModal';
+import { AppOverflowMenu } from '@/src/components/AppOverflowMenu';
 import { cn } from '@/src/lib/utils';
-import { Home, BookOpen, Flame, Gamepad2, Heart, Moon, Share2, Sparkles, Sun, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Flame, Gamepad2, Heart, Home, Moon, Share2, Sparkles, Sun, X, Search, Calendar, MessageCircle, Github, Linkedin, Globe, Target, Eye, Star as StarIcon, Shield, FileText, Info, MessageSquare, Book as BookIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 
@@ -23,8 +25,30 @@ interface SidebarProps {
   onShare?: () => void;
   onGoHome?: () => void;
   onOpenReader?: () => void;
+  onOpenSearch?: () => void;
+  onOpenPlans?: () => void;
+  onOpenOpinions?: () => void;
+  onOpenDictionary?: () => void;
+  onOpenUser?: () => void;
+  onOpenAboutLegal?: (type: AboutLegalType) => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  bookmarks: Bookmark[];
+  onSelectBookmark: (bookmark: Bookmark) => void;
+  onRemoveBookmark: (id: string) => void;
+  onPlayFavorite?: (bookmark: Bookmark) => void;
+  fontSize: number;
+  setFontSize: (size: number) => void;
+  accentColor: string;
+  setAccentColor: (color: string) => void;
+  voiceURI: string;
+  setVoiceURI: (uri: string) => void;
+  keepScreenOn: boolean;
+  setKeepScreenOn: (keep: boolean) => void;
+  startupPage: 'home' | 'reader';
+  setStartupPage: (page: 'home' | 'reader') => void;
+  homeSections: Record<string, boolean>;
+  setHomeSections: (sections: any) => void;
 }
 
 export function Sidebar({
@@ -44,12 +68,36 @@ export function Sidebar({
   onShare,
   onGoHome,
   onOpenReader,
+  onOpenSearch,
+  onOpenPlans,
+  onOpenOpinions,
+  onOpenDictionary,
+  onOpenUser,
+  onOpenAboutLegal,
   isDarkMode = true,
   onToggleDarkMode,
+  bookmarks,
+  onSelectBookmark,
+  onRemoveBookmark,
+  onPlayFavorite,
+  fontSize,
+  setFontSize,
+  accentColor,
+  setAccentColor,
+  voiceURI,
+  setVoiceURI,
+  keepScreenOn,
+  setKeepScreenOn,
+  startupPage,
+  setStartupPage,
+  homeSections,
+  setHomeSections,
 }: SidebarProps) {
   const { t, i18n } = useTranslation();
   const sidebarRef = useRef<HTMLElement>(null);
   const currentLanguage = i18n.resolvedLanguage || i18n.language;
+  const [activeTab, setActivePage] = useState<'menu' | 'favorites' | 'settings'>('menu');
+
   const menuCopy = currentLanguage.startsWith('en')
     ? {
         configuration: 'Configuration',
@@ -58,6 +106,8 @@ export function Sidebar({
         openReader: 'Bible',
         continueReading: 'Continue reading',
         continueDetail: selectedBook ? `${selectedBook.names[0]} ${selectedChapter}` : 'Open the reader',
+        tools: 'Tools',
+        social: 'Social',
       }
     : {
         configuration: 'Configuración',
@@ -66,30 +116,13 @@ export function Sidebar({
         openReader: 'Biblia',
         continueReading: 'Continuar lectura',
         continueDetail: selectedBook ? `${selectedBook.names[0]} ${selectedChapter}` : 'Abrir el lector',
+        tools: 'Herramientas',
+        social: 'Redes Sociales',
       };
 
   const sidebarSurface = isDarkMode
-    ? 'border-white/10 bg-[#111820] text-white shadow-[0_28px_70px_rgba(0,0,0,0.38)]'
+    ? 'border-white/10 bg-[#0b1219] text-white shadow-[0_28px_70px_rgba(0,0,0,0.45)]'
     : 'border-[#d8e4f2] bg-[#f7fbff] text-[#102542] shadow-[0_28px_70px_rgba(21,53,91,0.18)]';
-  const headerSurface = isDarkMode
-    ? 'border-white/10 bg-[linear-gradient(180deg,rgba(3,8,18,0.42)_0%,rgba(17,24,32,1)_100%)]'
-    : 'border-[#d8e4f2] bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(247,251,255,1)_100%)]';
-  const headerButtonTone = isDarkMode
-    ? 'border-white/10 bg-black/25 text-white hover:bg-black/35'
-    : 'border-[#d8e4f2] bg-white text-[#153153] hover:bg-[#edf5ff]';
-  const toggleButtonTone = isDarkMode
-    ? 'border-white/10 bg-black/25 text-white hover:-translate-y-0.5 hover:bg-[#10284f] hover:shadow-[0_12px_24px_rgba(77,163,255,0.2)]'
-    : 'border-[#d8e4f2] bg-white text-[#153153] hover:-translate-y-0.5 hover:bg-[#edf5ff] hover:shadow-[0_12px_24px_rgba(21,53,91,0.12)]';
-  const heroCardTone = isDarkMode
-    ? 'border-white/12 bg-black/30 shadow-[0_18px_40px_rgba(0,0,0,0.25)]'
-    : 'border-[#d8e4f2] bg-white shadow-[0_18px_40px_rgba(21,53,91,0.12)]';
-  const heroIconTone = isDarkMode ? 'bg-[#1a63c0] text-white' : 'bg-[#dcebff] text-[#1a63c0]';
-  const heroBadgeTone = isDarkMode ? 'text-[#8dc3ff]' : 'text-[#1a63c0]';
-  const heroTitleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
-  const heroDetailTone = isDarkMode ? 'text-white/62' : 'text-[#587392]';
-  const sectionTitleTone = isDarkMode ? 'text-[#e0a74b]' : 'text-[#b9851e]';
-  const titleTone = isDarkMode ? 'text-white' : 'text-[#102542]';
-  const subtitleTone = isDarkMode ? 'text-white/72' : 'text-[#587392]';
 
   const closeMenu = () => setIsOpen(false);
   const runAndClose = (callback?: () => void) => {
@@ -97,45 +130,11 @@ export function Sidebar({
     closeMenu();
   };
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-
-      if (sidebarRef.current?.contains(target)) {
-        return;
-      }
-
-      closeMenu();
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        closeMenu();
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
-
   const openReader = () => {
     if (onOpenReader) {
       runAndClose(onOpenReader);
       return;
     }
-
     const fallbackBook = selectedBook ?? books[0];
     if (fallbackBook) {
       onSelectBook(fallbackBook);
@@ -154,7 +153,7 @@ export function Sidebar({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={closeMenu}
-            className="fixed inset-0 z-[80] bg-black/65 backdrop-blur-sm"
+            className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm"
           />
         )}
       </AnimatePresence>
@@ -163,95 +162,124 @@ export function Sidebar({
         ref={sidebarRef}
         initial={false}
         animate={{ x: isOpen ? 0 : '-100%' }}
-        transition={{ type: 'spring', stiffness: 280, damping: 32 }}
-        className={cn('fixed inset-y-0 left-0 z-[90] flex w-[min(86vw,22rem)] flex-col overflow-hidden border-r', sidebarSurface)}
+        transition={{ type: 'spring', stiffness: 300, damping: 35 }}
+        className={cn('fixed inset-y-0 left-0 z-[90] flex w-[min(90vw,24rem)] flex-col overflow-hidden border-r', sidebarSurface)}
       >
-        <div className={cn('relative overflow-hidden border-b px-5 pb-5 pt-4', headerSurface)}>
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={closeMenu}
-                className={cn('flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border transition-all', headerButtonTone)}
-                aria-label={t('app.back')}
-                title={t('app.back')}
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <div className="min-w-0">
-                <p className={cn('truncate font-serif text-[1.45rem] font-bold leading-none', titleTone)}>{t('app.title')}</p>
-                <p className={cn('mt-1 text-[11px]', subtitleTone)}>{selectedBook ? `${selectedBook.names[0]} ${selectedChapter}` : t('app.home')}</p>
-              </div>
-            </div>
-
-            {onToggleDarkMode ? (
-              <button
-                type="button"
-                onClick={onToggleDarkMode}
-                className={cn('group flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border transition-all duration-200', toggleButtonTone)}
-                aria-label={isDarkMode ? t('settings.change_to_light') : t('settings.change_to_dark')}
-                title={isDarkMode ? t('settings.change_to_light') : t('settings.change_to_dark')}
-              >
-                <span className="transition-transform duration-200 group-hover:scale-110 group-hover:rotate-12">
-                  {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </span>
-              </button>
-            ) : null}
-          </div>
-
+        {/* Header Tabs - Estilo Bibliatodo */}
+        <div className={cn('flex border-b', isDarkMode ? 'border-white/5 bg-black/20' : 'border-[#d8e4f2] bg-white')}>
           <button
-            type="button"
-            onClick={openReader}
-            className={cn('relative mt-5 flex w-full items-center gap-3 rounded-[24px] border px-4 py-4 text-left backdrop-blur-xl', heroCardTone)}
+            onClick={() => setActivePage('menu')}
+            className={cn('flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all', activeTab === 'menu' ? 'text-[var(--primary)] border-b-2 border-[var(--primary)]' : isDarkMode ? 'text-white/45' : 'text-[#64748b] hover:text-[#102542]')}
           >
-            <span className={cn('flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl', heroIconTone)}>
-              <BookOpen className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className={cn('block text-[10px] font-bold uppercase tracking-[0.24em]', heroBadgeTone)}>{menuCopy.openReader}</span>
-              <span className={cn('mt-1 block text-base font-semibold', heroTitleTone)}>{menuCopy.continueReading}</span>
-              <span className={cn('mt-1 block truncate text-xs', heroDetailTone)}>{menuCopy.continueDetail}</span>
-            </span>
+            Menú
+          </button>
+          <button
+            onClick={() => setActivePage('favorites')}
+            className={cn('flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all', activeTab === 'favorites' ? 'text-[var(--primary)] border-b-2 border-[var(--primary)]' : isDarkMode ? 'text-white/45' : 'text-[#64748b] hover:text-[#102542]')}
+          >
+            {t('menu.favorites')}
+          </button>
+          <button
+            onClick={() => setActivePage('settings')}
+            className={cn('flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all', activeTab === 'settings' ? 'text-[var(--primary)] border-b-2 border-[var(--primary)]' : isDarkMode ? 'text-white/45' : 'text-[#64748b] hover:text-[#102542]')}
+          >
+            {t('menu.settings')}
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-5">
-          {onShare ? (
-          <SidebarSection title={menuCopy.configuration} isDarkMode={isDarkMode}>
-            {onShare ? (
-              <SidebarActionRow
-                icon={<Share2 className="h-5 w-5" />}
-                label={t('menu.share')}
-                detail={currentLanguage.startsWith('en') ? 'Share the app' : 'Comparte la app'}
-                onClick={() => runAndClose(onShare)}
-                isDarkMode={isDarkMode}
-              />
-            ) : null}
-          </SidebarSection>
-          ) : null}
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          {activeTab === 'menu' && (
+            <div className="p-4 space-y-6">
+              <SidebarSection title={menuCopy.navigation} isDarkMode={isDarkMode}>
+                <SidebarActionRow icon={<Home className="h-5 w-5" />} label={t('app.home')} onClick={() => runAndClose(onGoHome)} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<BookOpen className="h-5 w-5" />} label={menuCopy.openReader} onClick={openReader} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Search className="h-5 w-5" />} label={t('menu.search')} onClick={() => runAndClose(onOpenSearch)} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Calendar className="h-5 w-5" />} label={t('menu.plans')} onClick={() => runAndClose(onOpenPlans)} isDarkMode={isDarkMode} />
+              </SidebarSection>
 
-          <SidebarSection title={menuCopy.navigation} isDarkMode={isDarkMode}>
-            {onGoHome ? (
-              <SidebarActionRow icon={<Home className="h-5 w-5" />} label={t('app.home')} onClick={() => runAndClose(onGoHome)} isDarkMode={isDarkMode} />
-            ) : null}
-            <SidebarActionRow icon={<BookOpen className="h-5 w-5" />} label={menuCopy.openReader} onClick={openReader} isDarkMode={isDarkMode} />
-            <SidebarActionRow icon={<Heart className="h-5 w-5" />} label={t('menu.favorites')} onClick={() => runAndClose(onOpenFavorites)} isDarkMode={isDarkMode} />
-            <SidebarActionRow icon={<Sparkles className="h-5 w-5" />} label={t('menu.study')} onClick={() => runAndClose(onOpenStudy)} isDarkMode={isDarkMode} />
-            {onOpenGame ? (
-              <SidebarActionRow icon={<Gamepad2 className="h-5 w-5" />} label={t('menu.game')} onClick={() => runAndClose(onOpenGame)} isDarkMode={isDarkMode} />
-            ) : null}
-          </SidebarSection>
+              <SidebarSection title={menuCopy.tools} isDarkMode={isDarkMode}>
+                <SidebarActionRow icon={<Sparkles className="h-5 w-5" />} label={t('menu.study')} detail="IA Bíblica" onClick={() => runAndClose(onOpenStudy)} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<MessageSquare className="h-5 w-5" />} label="Opiniones" onClick={() => runAndClose(onOpenOpinions)} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<BookIcon className="h-5 w-5" />} label="Diccionario" onClick={() => runAndClose(onOpenDictionary)} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Gamepad2 className="h-5 w-5" />} label={t('menu.game')} onClick={() => runAndClose(onOpenGame)} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Globe className="h-5 w-5" />} label="Ver Portafolio" onClick={() => window.location.assign('https://dofepro-tech.github.io/Mi-Portafolio/')} isDarkMode={isDarkMode} />
+              </SidebarSection>
 
-          <SidebarSection title={menuCopy.daily} isDarkMode={isDarkMode}>
-            <SidebarActionRow
-              icon={<Flame className="h-5 w-5" />}
-              label={t('menu.daily_challenges')}
-              detail={currentLanguage.startsWith('en') ? 'Verse, reflection, and daily rhythm' : 'Versículo, reflexión y ritmo diario'}
-              onClick={() => runAndClose(onOpenDailyExperience)}
-              isDarkMode={isDarkMode}
-            />
-          </SidebarSection>
+              <SidebarSection title={menuCopy.daily} isDarkMode={isDarkMode}>
+                <SidebarActionRow icon={<Flame className="h-5 w-5" />} label={t('menu.daily_challenges')} onClick={() => runAndClose(onOpenDailyExperience)} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Share2 className="h-5 w-5" />} label={t('menu.share')} detail="Compartir App" onClick={() => runAndClose(onShare)} isDarkMode={isDarkMode} />
+              </SidebarSection>
+
+              <SidebarSection title={t('menu.about')} isDarkMode={isDarkMode}>
+                <SidebarActionRow icon={<Info className="h-5 w-5" />} label={t('menu.about')} onClick={() => runAndClose(() => onOpenAboutLegal?.('about'))} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Target className="h-5 w-5" />} label={t('menu.mission')} onClick={() => runAndClose(() => onOpenAboutLegal?.('mission'))} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Eye className="h-5 w-5" />} label={t('menu.vision')} onClick={() => runAndClose(() => onOpenAboutLegal?.('vision'))} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<StarIcon className="h-5 w-5" />} label={t('menu.values')} onClick={() => runAndClose(() => onOpenAboutLegal?.('values'))} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<FileText className="h-5 w-5" />} label={t('menu.terms')} onClick={() => runAndClose(() => onOpenAboutLegal?.('terms'))} isDarkMode={isDarkMode} />
+                <SidebarActionRow icon={<Shield className="h-5 w-5" />} label={t('menu.privacy')} onClick={() => runAndClose(() => onOpenAboutLegal?.('privacy'))} isDarkMode={isDarkMode} />
+              </SidebarSection>
+
+              <div className={cn('pt-4 border-t', isDarkMode ? 'border-white/5' : 'border-[#d8e4f2]')}>
+                <p className={cn('px-2 text-[10px] font-bold uppercase tracking-widest mb-4', isDarkMode ? 'text-white/45' : 'text-[#587392]')}>{menuCopy.social}</p>
+                <div className="flex gap-4 px-2">
+                  <a href="https://wa.me/18492618830" target="_blank" rel="noreferrer" aria-label="WhatsApp" className={cn('rounded-2xl p-3 transition-all', isDarkMode ? 'bg-white/5 text-[#25D366] hover:bg-white/10' : 'border border-[#d8e4f2] bg-white text-[#128c4a] hover:bg-[#edf5ff]')}><MessageCircle className="h-5 w-5" /></a>
+                  <a href="https://github.com/dofepro" target="_blank" rel="noreferrer" aria-label="GitHub" className={cn('rounded-2xl p-3 transition-all', isDarkMode ? 'bg-white/5 text-white/80 hover:bg-white/10' : 'border border-[#d8e4f2] bg-white text-[#24292f] hover:bg-[#edf5ff]')}><Github className="h-5 w-5" /></a>
+                  <a href="https://www.linkedin.com/in/domingo-feliz-dofepro-tech" target="_blank" rel="noreferrer" aria-label="LinkedIn" className={cn('rounded-2xl p-3 transition-all', isDarkMode ? 'bg-white/5 text-[#36a9e8] hover:bg-white/10' : 'border border-[#d8e4f2] bg-white text-[#0a66c2] hover:bg-[#edf5ff]')}><Linkedin className="h-5 w-5" /></a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'favorites' && (
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-6 px-2">
+                <Heart className="h-5 w-5 text-[#ff7f7f] fill-[#ff7f7f]" />
+                <h3 className="font-serif text-xl font-bold uppercase">{t('menu.favorites')}</h3>
+              </div>
+              {bookmarks.length === 0 ? (
+                <div className={cn('py-20 text-center font-serif italic', isDarkMode ? 'text-white/45' : 'text-[#587392]')}>{t('verses.no_bookmarks')}</div>
+              ) : (
+                <div className="space-y-3">
+                  {bookmarks.map(b => (
+                    <div key={b.id} className={cn('group relative rounded-2xl border p-4 transition-all', isDarkMode ? 'border-white/5 bg-white/[0.03] hover:border-[#ff7f7f]/30' : 'border-[#d8e4f2] bg-white hover:border-[#d64255]/30')}>
+                      <button onClick={() => { onSelectBookmark(b); closeMenu(); }} className="w-full text-left pr-8">
+                        <p className="font-serif font-bold text-white mb-1">{b.label}</p>
+                        <p className={cn('text-[10px] uppercase tracking-widest', isDarkMode ? 'text-white/45' : 'text-[#587392]')}>{new Date(b.createdAt).toLocaleDateString()}</p>
+                      </button>
+                      <button onClick={() => onRemoveBookmark(b.id)} className={cn('absolute right-4 top-1/2 -translate-y-1/2 p-2 transition-all', isDarkMode ? 'text-white/45 hover:text-[#ff7f7f]' : 'text-[#64748b] hover:text-[#d64255]')}><X className="h-4 w-4" /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+             <div className="p-4">
+                <AppOverflowMenu
+                  isDarkMode={isDarkMode}
+                  onToggleDarkMode={onToggleDarkMode!}
+                  fontSize={fontSize}
+                  setFontSize={setFontSize}
+                  accentColor={accentColor}
+                  setAccentColor={setAccentColor}
+                  voiceURI={voiceURI}
+                  setVoiceURI={setVoiceURI}
+                  keepScreenOn={keepScreenOn}
+                  setKeepScreenOn={setKeepScreenOn}
+                  startupPage={startupPage}
+                  setStartupPage={setStartupPage}
+                  homeSections={homeSections}
+                  setHomeSections={setHomeSections}
+                   menuClassName="static w-full shadow-none border-none bg-transparent"
+                   inline
+                 />
+             </div>
+          )}
+        </div>
+        <div className={cn('shrink-0 border-t px-4 py-3 text-center', isDarkMode ? 'border-white/5 bg-black/10' : 'border-[#d8e4f2] bg-white/70')}>
+          <p className={cn('font-serif text-sm italic', isDarkMode ? 'text-white/65' : 'text-[#334155]')}>Haciéndolo de corazón, como para el Señor.</p>
+          <p className={cn('mt-1 text-[10px] font-bold uppercase tracking-widest', isDarkMode ? 'text-white/40' : 'text-[#64748b]')}>Colosenses 3:23</p>
         </div>
       </motion.aside>
     </>
@@ -267,7 +295,7 @@ interface SidebarSectionProps {
 function SidebarSection({ title, children, isDarkMode }: SidebarSectionProps) {
   return (
     <section className="mb-6">
-      <p className={cn('mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.22em]', isDarkMode ? 'text-[#e0a74b]' : 'text-[#b9851e]')}>{title}</p>
+      <p className={cn('mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.22em]', isDarkMode ? 'text-[#e0a74b]' : 'text-[#8c5b00]')}>{title}</p>
       <div className="space-y-2">{children}</div>
     </section>
   );
@@ -289,11 +317,11 @@ function SidebarActionRow({ icon, label, onClick, detail, isDarkMode }: SidebarA
       className={cn(
         'flex w-full items-center gap-3 rounded-[22px] border px-4 py-3 text-left transition-all',
         isDarkMode
-          ? 'border-white/8 bg-white/[0.03] hover:border-[#5aa8ff]/35 hover:bg-[#0f1f33]'
-          : 'border-[#d8e4f2] bg-white hover:border-[#5aa8ff]/35 hover:bg-[#edf5ff]'
+          ? 'border-white/8 bg-white/[0.03] hover:border-[var(--primary)]/40 hover:bg-[var(--primary)]/10'
+          : 'border-[#d8e4f2] bg-white hover:border-[var(--primary)]/40 hover:bg-[var(--primary)]/5'
       )}
     >
-      <span className={cn('flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl', isDarkMode ? 'bg-[#0f2d52] text-[#79baff]' : 'bg-[#dcebff] text-[#1a63c0]')}>
+      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--primary)]/15 text-[var(--primary)]">
         {icon}
       </span>
       <span className="min-w-0 flex-1">

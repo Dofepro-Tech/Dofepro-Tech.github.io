@@ -16,6 +16,7 @@ export function BrandSeal({ className, showWordmark = true }: BrandSealProps) {
         decoding="async"
         className={cn('h-full w-full object-contain', !showWordmark && 'scale-[0.98]')}
       />
+      <span className="brand-seal-orbit" aria-hidden="true" />
     </div>
   );
 }
