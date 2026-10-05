@@ -336,7 +336,10 @@ export function UserAccessHub({ onGoBack, onGoHome, onOpenReader, onOpenSearch, 
     try {
       const user = await updateAuthProfile(session.accessToken, displayName);
       const savedName = user.user_metadata?.display_name;
-      setSession({ ...session, name: typeof savedName === 'string' && savedName.trim() ? savedName.trim() : displayName });
+      if (typeof savedName !== 'string' || savedName.trim() !== displayName) {
+        throw new Error(currentLanguage === 'en' ? 'The server did not confirm the profile change.' : 'El servidor no confirmó el cambio del perfil.');
+      }
+      setSession({ ...session, name: savedName.trim() });
       setStatusMessage(currentLanguage === 'en' ? 'Profile updated.' : 'Perfil actualizado.');
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : (currentLanguage === 'en' ? 'Could not save the profile.' : 'No se pudo guardar el perfil.'));
@@ -437,7 +440,7 @@ export function UserAccessHub({ onGoBack, onGoHome, onOpenReader, onOpenSearch, 
             </motion.form>
 
             {statusMessage && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 px-4 py-3 text-center text-xs font-bold text-[#8dc3ff]">
+              <motion.div role="status" aria-live="polite" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 px-4 py-3 text-center text-xs font-bold text-[#8dc3ff]">
                 {statusMessage}
               </motion.div>
             )}
@@ -503,8 +506,24 @@ export function UserAccessHub({ onGoBack, onGoHome, onOpenReader, onOpenSearch, 
                       {copy.logout}
                     </button>
                   </div>
+                  {statusMessage && (
+                    <motion.div role="status" aria-live="polite" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 px-4 py-3 text-center text-xs font-bold text-[#8dc3ff]">
+                      {statusMessage}
+                    </motion.div>
+                  )}
                </div>
             </div>
+            {statusMessage && (
+              <motion.div
+                role="status"
+                aria-live="polite"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 px-4 py-3 text-center text-xs font-bold text-[#8dc3ff]"
+              >
+                {statusMessage}
+              </motion.div>
+            )}
           </div>
         )}
 

@@ -877,6 +877,16 @@ export default function App() {
       return;
     }
 
+    if (aboutLegalState.isOpen) {
+      setAboutLegalState((current) => ({ ...current, isOpen: false }));
+      return;
+    }
+
+    if (isDownloadModalOpen) {
+      setIsDownloadModalOpen(false);
+      return;
+    }
+
     if (selectedVerse) {
       setSelectedVerse(null);
       return;
@@ -911,7 +921,7 @@ export default function App() {
       return;
     }
 
-    void CapacitorApp.exitApp();
+    void CapacitorApp.minimizeApp().catch(() => CapacitorApp.exitApp());
   });
 
   useEffect(() => {
