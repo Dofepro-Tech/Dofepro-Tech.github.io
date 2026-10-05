@@ -1,18 +1,20 @@
 {
-  "version": "1.0.14",
+  "version": "1.0.15",
   "channel": "stable",
-  "publishedAt": "2026-10-04T23:45:47.254Z",
+  "publishedAt": "2026-10-05T00:55:13.453Z",
   "downloadUrl": "https://dofepro-tech.github.io/biblia-dj/",
   "apkUrl": "https://dofepro-tech.github.io/biblia-dj-android.apk",
   "updateUrl": "https://dofepro-tech.github.io/app-update.json",
   "notes": [
     "Tus favoritos y el progreso del juego se sincronizan con tu perfil.",
     "Puedes instalar y actualizar voces locales desde Android; la APK se oculta dentro de la app instalada.",
-    "El Devocional móvil ahora ocupa menos espacio y permite desplegar cada sección cuando la necesites."
+    "El Devocional móvil ahora ocupa menos espacio y permite desplegar cada sección cuando la necesites.",
+    "La app inicia con menos código y carga pantallas e imágenes al necesitarlas."
   ],
   "notesEn": [
     "Your favorites and game progress now sync with your profile.",
     "Install and refresh local voices on Android; the APK button is hidden inside the installed app.",
-    "The mobile devotional takes less space and lets you expand each section when needed."
+    "The mobile devotional takes less space and lets you expand each section when needed.",
+    "The app starts with less code and loads screens and images on demand."
   ]
 }

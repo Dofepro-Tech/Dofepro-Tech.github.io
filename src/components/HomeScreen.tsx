@@ -611,7 +611,7 @@ export function HomeScreen(props: HomeScreenProps) {
           {homeSections.dailyVerse && dailyVerse && (
             <section className="hidden lg:block relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl mb-8 group cursor-pointer" onClick={() => void handleImagePreview({ id: 'dv', title: dailyVerse.label, body: dailyVerse.verse.verse, imageUrl: dailyImage, verseReference: { bookAbrev: dailyVerse.bookAbrev, chapter: dailyVerse.chapter, verseNumber: preferredDailyVerseNumber ?? dailyVerse.verse.number, labelEs: dailyVerse.label, labelEn: dailyVerse.label } } as any)}>
               <div className="absolute inset-0 z-0">
-                {dailyImage ? <img src={dailyImage} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Daily" /> : <div className="h-full w-full bg-slate-900" />}
+                {dailyImage ? <img src={dailyImage} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Daily" /> : <div className="h-full w-full bg-slate-900" />}
                 <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
               </div>
               <div className="relative z-10 p-10 flex flex-col justify-center min-h-[260px]">
@@ -781,7 +781,7 @@ function DailyCompanionCard({ kind, label, resource, isDarkMode, onClick, compac
   return (
     <button type="button" onClick={onClick} className={cn('group overflow-hidden rounded-[26px] border text-left transition-all', getDailyCompanionTone(kind, isDarkMode), compact ? 'w-[min(86vw,22rem)] shrink-0 snap-start p-3.5 sm:w-full sm:min-w-0' : 'w-full p-4')}>
       <div className={cn('relative overflow-hidden rounded-[22px] aspect-[16/10] bg-black/20')}>
-        {resource.imageUrl && <img src={resource.imageUrl} className="h-full w-full object-cover" loading="lazy" alt="" />}
+        {resource.imageUrl && <img src={resource.imageUrl} className="h-full w-full object-cover" loading="lazy" decoding="async" alt="" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4"><h4 className="font-serif font-bold text-white leading-tight">{resource.title}</h4></div>
       </div>
@@ -794,7 +794,7 @@ function DailyImageCard({ label, resource, currentLanguage, isDarkMode, isSaved,
   return (
     <article className={cn('group overflow-hidden rounded-[24px] border', compact ? 'w-[min(86vw,22rem)] shrink-0 snap-start p-3.5 sm:w-full sm:min-w-0' : 'w-full p-4', isDarkMode ? 'border-white/10 bg-white/5' : 'border-[#d5e4f3] bg-white')}>
       <div className="relative overflow-hidden rounded-[20px] aspect-[16/10] cursor-pointer" onClick={onOpenImage}>
-        {resource.imageUrl && <img src={resource.imageUrl} className="h-full w-full object-cover" alt="" />}
+        {resource.imageUrl && <img src={resource.imageUrl} className="h-full w-full object-cover" loading="lazy" decoding="async" alt="" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-4 left-4 right-4 text-white"><p className="font-serif italic text-lg leading-tight line-clamp-3">{resource.quote || resource.title}</p></div>
       </div>

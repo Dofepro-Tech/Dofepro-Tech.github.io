@@ -7,13 +7,6 @@ import { Suspense, useEffect, useEffectEvent, useState } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Sidebar } from '@/src/components/Sidebar';
-import { BibleReader } from '@/src/components/BibleReader';
-import { HomeScreen } from '@/src/components/HomeScreen';
-import { SearchHub } from '@/src/components/SearchHub';
-import { ReadingPlansHub } from '@/src/components/ReadingPlansHub';
-import { OpinionsHub } from '@/src/components/OpinionsHub';
-import { DictionaryHub } from '@/src/components/DictionaryHub';
-import { UserAccessHub } from '@/src/components/UserAccessHub';
 import { ShareSheet } from '@/src/components/ShareSheet';
 import { DownloadAppModal } from '@/src/components/DownloadAppModal';
 import { SplashScreen } from '@/src/components/SplashScreen';
@@ -80,6 +73,34 @@ const LazyGuidedStudy = lazyWithRetry(
 const LazyChristianGameHub = lazyWithRetry(
   () => import('@/src/components/ChristianGameHub').then((module) => ({ default: module.ChristianGameHub })),
   'christian-game-hub',
+);
+const LazyBibleReader = lazyWithRetry(
+  () => import('@/src/components/BibleReader').then((module) => ({ default: module.BibleReader })),
+  'bible-reader',
+);
+const LazyHomeScreen = lazyWithRetry(
+  () => import('@/src/components/HomeScreen').then((module) => ({ default: module.HomeScreen })),
+  'home-screen',
+);
+const LazySearchHub = lazyWithRetry(
+  () => import('@/src/components/SearchHub').then((module) => ({ default: module.SearchHub })),
+  'search-hub',
+);
+const LazyReadingPlansHub = lazyWithRetry(
+  () => import('@/src/components/ReadingPlansHub').then((module) => ({ default: module.ReadingPlansHub })),
+  'reading-plans-hub',
+);
+const LazyOpinionsHub = lazyWithRetry(
+  () => import('@/src/components/OpinionsHub').then((module) => ({ default: module.OpinionsHub })),
+  'opinions-hub',
+);
+const LazyDictionaryHub = lazyWithRetry(
+  () => import('@/src/components/DictionaryHub').then((module) => ({ default: module.DictionaryHub })),
+  'dictionary-hub',
+);
+const LazyUserAccessHub = lazyWithRetry(
+  () => import('@/src/components/UserAccessHub').then((module) => ({ default: module.UserAccessHub })),
+  'user-access-hub',
 );
 
 type MainView = 'home' | 'reader' | 'game' | 'search' | 'plans' | 'profile' | 'opinions' | 'dictionary';
@@ -1000,8 +1021,9 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        <Suspense fallback={<div className="flex h-full items-center justify-center" role="status" aria-label={t('app.loading')}><Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" /></div>}>
         {mainView === 'home' ? (
-          <HomeScreen
+          <LazyHomeScreen
             isNativeApp={isNativePlatform}
             books={books}
             selectedBook={selectedBook}
@@ -1058,7 +1080,6 @@ export default function App() {
             onDismissAppUpdate={handleDismissAppUpdate}
           />
         ) : mainView === 'game' ? (
-          <Suspense fallback={null}>
             <LazyChristianGameHub
               onBack={handleGoBack}
               onGoHome={handleGoHome}
@@ -1080,9 +1101,8 @@ export default function App() {
               onOpenUser={openUserHub}
               onOpenAboutLegal={handleOpenAboutLegal}
             />
-          </Suspense>
         ) : mainView === 'search' ? (
-          <SearchHub
+          <LazySearchHub
             initialQuery={activeSearchQuery}
             onGoBack={handleGoBack}
             onGoHome={handleGoHome}
@@ -1094,7 +1114,7 @@ export default function App() {
             onOpenVerse={handleNavigateToVerse}
           />
         ) : mainView === 'plans' ? (
-          <ReadingPlansHub
+          <LazyReadingPlansHub
             onGoBack={handleGoBack}
             onGoHome={handleGoHome}
             onOpenReader={openReaderSelector}
@@ -1104,7 +1124,7 @@ export default function App() {
             onOpenAboutLegal={handleOpenAboutLegal}
           />
         ) : mainView === 'profile' ? (
-          <UserAccessHub
+          <LazyUserAccessHub
             onGoBack={handleGoBack}
             onGoHome={handleGoHome}
             onOpenReader={openReaderSelector}
@@ -1114,7 +1134,7 @@ export default function App() {
             onOpenAboutLegal={handleOpenAboutLegal}
           />
         ) : mainView === 'opinions' ? (
-          <OpinionsHub
+          <LazyOpinionsHub
             onGoBack={handleGoBack}
             onGoHome={handleGoHome}
             onOpenReader={() => navigateToMainView('reader')}
@@ -1124,7 +1144,7 @@ export default function App() {
             onOpenAboutLegal={handleOpenAboutLegal}
           />
         ) : mainView === 'dictionary' ? (
-          <DictionaryHub
+          <LazyDictionaryHub
             onGoBack={handleGoBack}
             onGoHome={handleGoHome}
             onOpenReader={() => navigateToMainView('reader')}
@@ -1134,7 +1154,7 @@ export default function App() {
             onOpenAboutLegal={handleOpenAboutLegal}
           />
         ) : (
-          <BibleReader 
+          <LazyBibleReader
             isNativeApp={isNativePlatform}
             chapterData={chapterData} 
             isLoading={isLoading} 
@@ -1189,6 +1209,7 @@ export default function App() {
             onClearSelectedVerse={() => setSelectedVerse(null)}
           />
         )}
+        </Suspense>
       </main>
 
       <Suspense fallback={null}>
